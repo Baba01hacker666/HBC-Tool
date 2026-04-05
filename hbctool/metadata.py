@@ -4,8 +4,8 @@ project_no_spaces = project.replace(' ', '')
 version = '0.1.5'
 description = ('A command-line interface for disassembling and assembling'
                'the Hermes Bytecode')
-authors = ['bongtrop', 'ErbaZZ']
+authors = ['baba01hacker']
 authors_string = ', '.join(authors)
-emails = ['bongtrop@gmail.com', 'weerawat.paw@gmail.com']
+emails = ['baba01hacker@users.noreply.github.com']
 license = 'MIT'
-url = 'https://github.com/bongtrop/hbctool'
+url = 'https://github.com/Baba01hacker666/HBC-Tool'
