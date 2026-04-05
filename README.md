@@ -35,8 +35,8 @@ A command-line interface for disassembling and assembling
 the Hermes Bytecode.
 
 Usage:
-    hbctool disasm <HBC_FILE> <HASM_PATH>
-    hbctool asm <HASM_PATH> <HBC_FILE>
+    hbctool disasm <HBC_FILE> [<HASM_PATH>]
+    hbctool asm [<HASM_PATH>] [<HBC_FILE>]
     hbctool --help
     hbctool --version
 
@@ -55,6 +55,8 @@ Options:
 Examples:
     hbctool disasm index.android.bundle test_hasm
     hbctool asm test_hasm index.android.bundle
+    hbctool disasm index.android.bundle             # default output path: hasm/
+    hbctool asm                                     # default input path: hasm/, output file: index.android.bundle
 ```
 
 > For Android, the HBC file normally locates at `assets` directory with `index.android.bundle` filename.

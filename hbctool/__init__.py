@@ -3,8 +3,8 @@ A command-line interface for disassembling and assembling
 the Hermes Bytecode.
 
 Usage:
-    hbctool disasm <HBC_FILE> <HASM_PATH>
-    hbctool asm <HASM_PATH> <HBC_FILE>
+    hbctool disasm <HBC_FILE> [<HASM_PATH>]
+    hbctool asm [<HASM_PATH>] [<HBC_FILE>]
     hbctool --help
     hbctool --version
 
@@ -26,8 +26,16 @@ Examples:
 """
 from docopt import docopt
 from hbctool import metadata, hbc, hasm
+import os
+import sys
+
+DEFAULT_HASM_PATH = "hasm"
+DEFAULT_HBC_FILE = "index.android.bundle"
 
 def disasm(hbcfile, hasmpath):
+    if not os.path.isfile(hbcfile):
+        raise FileNotFoundError(f"HBC file not found: {hbcfile}")
+
     print(f"[*] Disassemble '{hbcfile}' to '{hasmpath}' path")
     f = open(hbcfile, "rb")
     hbco = hbc.load(f)
@@ -57,10 +65,14 @@ def asm(hasmpath, hbcfile):
 
 def main():
     args = docopt(__doc__, version=f"{metadata.project} {metadata.version}")
-    if args['disasm']:
-        disasm(args['<HBC_FILE>'], args['<HASM_PATH>'])
-    elif args['asm']:
-        asm(args['<HASM_PATH>'], args['<HBC_FILE>'])
+    try:
+        if args['disasm']:
+            disasm(args['<HBC_FILE>'], args['<HASM_PATH>'] or DEFAULT_HASM_PATH)
+        elif args['asm']:
+            asm(args['<HASM_PATH>'] or DEFAULT_HASM_PATH, args['<HBC_FILE>'] or DEFAULT_HBC_FILE)
+    except (FileNotFoundError, hasm.HASMError, ValueError) as exc:
+        print(f"[!] {exc}", file=sys.stderr)
+        raise SystemExit(1)
     
 
 def entry_point():
