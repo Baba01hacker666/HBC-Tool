@@ -8,6 +8,14 @@ import re
 class HASMError(ValueError):
     pass
 
+FUNCTION_HEADER_RE = re.compile(
+    r"Function<.*?>([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):"
+)
+FUNCTION_BLOCK_RE = re.compile(
+    r"Function<.*?>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
+    re.DOTALL
+)
+
 
 def write_func(f, func, i, hbc):
     functionName, paramCount, registerCount, symbolCount, insts, _ = func
@@ -74,30 +82,31 @@ def dump(hbc, path, force=False):
     f.close()
 
 def read_all_func(hasm, hbc):
-    func_asms = [func_asm + "EndFunction" for func_asm in hasm.split("EndFunction\n\n")[:-1]]
     functionCount = hbc.getFunctionCount()
-
     rs = [''] * functionCount
 
-    for func_asm in func_asms:
-        m = re.search(r"Function<.*?>([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):", func_asm)
-        if not m:
-            raise HASMError(f"Malformed function header: {func_asm[:200]}")
-
+    for m in FUNCTION_HEADER_RE.finditer(hasm):
         fid = int(m.group(1))
 
         if fid < 0 or fid >= functionCount:
             raise HASMError(f"Invalid function ID {fid}; expected in range [0, {functionCount}).")
 
-        rs[fid] = func_asm
-    
+        end_pos = hasm.find("\nEndFunction", m.start())
+        if end_pos == -1:
+            raise HASMError(f"Malformed function block for function {fid}.")
+
+        rs[fid] = hasm[m.start():end_pos + len("\nEndFunction")]
+
+    if any(not func_asm for func_asm in rs):
+        raise HASMError("Malformed HASM: missing function blocks.")
+
     return rs
 
 
 def read_func(func_asms, i):
     func_asm = func_asms[i]
 
-    m = re.search(r"Function<.*?>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction", func_asm, re.DOTALL)
+    m = FUNCTION_BLOCK_RE.search(func_asm)
     if not m:
         raise HASMError(f"Malformed function block for function {i}.")
 
