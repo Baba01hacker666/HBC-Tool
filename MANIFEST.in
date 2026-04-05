@@ -1,0 +1,2 @@
+recursive-include hbctool/hbc *.json
+recursive-include hbctool/hbc raw/*
