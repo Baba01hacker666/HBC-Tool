@@ -93,6 +93,10 @@ class BitWriter(object):
 class BitReader(object):
     def __init__(self, f):
         self.input = f
+        if hasattr(f, 'read'):
+            self.cache = f.read()
+        else:
+            self.cache = bytes()
         self.accumulator = 0
         self.bcount = 0
         self.read = 0
@@ -103,12 +107,37 @@ class BitReader(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
+    def _ensure_cache(self, n):
+        if n == float('inf'):
+            if hasattr(self.input, 'read'):
+                more = self.input.read()
+                if more:
+                    self.cache += more
+            return
+
+        if self.read + n > len(self.cache):
+            if hasattr(self.input, 'read'):
+                more = self.input.read(self.read + n - len(self.cache))
+                if not more:
+                    more = self.input.read()
+                if more:
+                    self.cache += more
+
+    def read_raw(self, n):
+        assert not self.bcount, "bcount is not zero."
+        self._ensure_cache(n)
+        data = self.cache[self.read : self.read + n]
+        if len(data) != n:
+            raise EOFError(f"Unexpected EOF while reading {n} bytes.")
+        self.read += n
+        return data
+
     def _readbit(self, remaining=-1):
         if not self.bcount:
-            a = self.input.read(1)
-            self.read += 1
-            if a:
-                self.accumulator = ord(a)
+            self._ensure_cache(1)
+            if self.read < len(self.cache):
+                self.accumulator = self.cache[self.read]
+                self.read += 1
             self.bcount = 8
 
         if remaining > -1:
@@ -125,11 +154,12 @@ class BitReader(object):
 
     def _readbyte(self):
         assert not self.bcount, "bcount is not zero."
-        a = self.input.read(1)
-        if not a:
+        self._ensure_cache(1)
+        if self.read >= len(self.cache):
             raise EOFError("Unexpected EOF while reading a byte.")
+        a = self.cache[self.read]
         self.read += 1
-        return a[0]
+        return a
 
     def readbits(self, n, remained=False):
         v = 0
@@ -144,15 +174,10 @@ class BitReader(object):
         return v
     
     def readbytes(self, n=1):
-        assert not self.bcount, "bcount is not zero."
-        data = self.input.read(n)
-        if len(data) != n:
-            raise EOFError(f"Unexpected EOF while reading {n} bytes.")
-        self.read += n
+        data = self.read_raw(n)
         return int.from_bytes(data, byteorder="big", signed=False)
 
     def seek(self, i):
-        self.input.seek(i)
         self.read = i
     
     def tell(self):
@@ -168,7 +193,8 @@ class BitReader(object):
         self.seek(l + b)
     
     def readall(self):
-        a = self.input.read()
+        self._ensure_cache(float('inf'))
+        a = self.cache[self.read:]
         self.read += len(a)
         return list(a)
 
@@ -183,11 +209,7 @@ def readuint(f, bits=64, signed=False):
         return b
 
     n = bits // 8
-    assert not f.bcount, "bcount is not zero."
-    data = f.input.read(n)
-    if len(data) != n:
-        raise EOFError(f"Unexpected EOF while reading {n} bytes.")
-    f.read += n
+    data = f.read_raw(n)
     
     x = int.from_bytes(data, byteorder="little", signed=signed)
     return x
