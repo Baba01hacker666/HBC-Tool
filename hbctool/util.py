@@ -177,26 +177,28 @@ class BitReader(object):
 def readuint(f, bits=64, signed=False):
     assert bits % 8 == 0, "Not support"
     if bits == 8:
-        return f.readbytes(1)
-
-    x = 0
-    s = 0
-    for _ in range(bits//8):
         b = f.readbytes(1)
-        x |= (b & 0xFF) << s
-        s += 8
+        if signed and (b & 0x80):
+            b -= 0x100
+        return b
+
+    n = bits // 8
+    assert not f.bcount, "bcount is not zero."
+    data = f.input.read(n)
+    if len(data) != n:
+        raise EOFError(f"Unexpected EOF while reading {n} bytes.")
+    f.read += n
     
-    if signed and (x & (1<<(bits-1))):
-        x = - ((1<<(bits)) - x)
-        
-    if x.bit_length() > bits:
-        print(f"--> Int {x} longer than {bits} bits")
+    x = int.from_bytes(data, byteorder="little", signed=signed)
     return x
 
 def readint(f, bits=64):
     return readuint(f, bits, signed=True)
 
 def readbits(f, bits=8):
+    if not f.bcount and bits % 8 == 0:
+        return readuint(f, bits)
+
     x = 0
     s = 0
 
@@ -207,16 +209,19 @@ def readbits(f, bits=8):
         s += l
         bits -= l
         
-    for _ in range(bits//8):
-        b = f.readbits(8)
-        x |= (b & 0xFF) << s
-        s += 8
-    
+    if bits >= 8 and not f.bcount:
+        n = bits // 8
+        if n > 0:
+            val = readuint(f, n * 8)
+            x |= val << s
+            s += n * 8
+            bits -= n * 8
+
     r = bits % 8
     if r != 0:
         b = f.readbits(r, remained=True)
         x |= (b & ((1 << r) - 1)) << s
-        s+=r
+        s += r
 
     return x
 
@@ -244,23 +249,27 @@ def read(f, format):
 def writeuint(f, v, bits=64, signed=False):
     assert bits % 8 == 0, "Not support"
 
-    if signed:
-        v += (1 << bits)
-
     if bits == 8:
+        if signed:
+            v = v & 0xff
         f.writebytes(v, 1)
         return
 
-    s = 0
-    for _ in range(bits//8):
-        f.writebytes(v & 0xff, 1)
-        v = v >> 8
-        s += 8
+    n = bits // 8
+    assert not f.bcount, "bcount is not zero."
+    v = v & ((1 << bits) - 1)
+    data = v.to_bytes(n, byteorder="little", signed=False)
+    f.out.write(data)
+    f.write += n
 
 def writeint(f, v, bits=64):
     return writeuint(f, v, bits, signed=True)
 
 def writebits(f, v, bits=8):
+    if not f.bcount and bits % 8 == 0:
+        writeuint(f, v, bits)
+        return
+
     s = 0
     if f.bcount % 8 != 0 and bits >= 8 - f.bcount:
         l = 8 - f.bcount
@@ -269,10 +278,13 @@ def writebits(f, v, bits=8):
         s += l
         bits -= l
         
-    for _ in range(bits//8):
-        f.writebits(v & 0xff, 8)
-        v = v >> 8
-        s += 8
+    if bits >= 8 and not f.bcount:
+        n = bits // 8
+        if n > 0:
+            writeuint(f, v & ((1 << (n*8)) - 1), n * 8)
+            v = v >> (n * 8)
+            s += n * 8
+            bits -= n * 8
     
     r = bits % 8
     if r != 0:
