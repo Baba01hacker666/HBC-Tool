@@ -1,5 +1,13 @@
 from setuptools import find_packages, setup
 
+packages = find_packages()
+
+hbc_package_data = {
+    package: ["data/*.json", "raw/*"]
+    for package in packages
+    if package.startswith("hbctool.hbc.hbc")
+}
+
 setup(
     name="hbctool",
     version="0.1.5",
@@ -14,7 +22,8 @@ setup(
         "Repository": "https://github.com/Baba01hacker666/HBC-Tool",
         "Documentation": "https://github.com/Baba01hacker666/HBC-Tool",
     },
-    packages=find_packages(),
+    packages=packages,
+    package_data=hbc_package_data,
     include_package_data=True,
     install_requires=["docopt>=0.6.2,<0.7.0"],
     entry_points={"console_scripts": ["hbctool=hbctool:main"]},
