@@ -1,4 +1,5 @@
 import unittest
+import io
 from hbctool.util import *
 from hbctool.hbc.hbc76.test import *
 from hbctool.hbc.hbc74.test import *
@@ -103,6 +104,26 @@ class TestFileUtilization(unittest.TestCase):
         self.assertEqual(isUTF16, 1)
         self.assertEqual(offset, 465)
         self.assertEqual(length, 3)
+
+    def test_bit_reader_seek_is_absolute_from_file_start(self):
+        io_obj = io.BytesIO(bytes(range(32)))
+        io_obj.seek(10)
+        fr = BitReader(io_obj)
+
+        fr.seek(0)
+        self.assertEqual(fr.readbytes(1), 0)
+
+        fr.seek(20)
+        self.assertEqual(fr.readbytes(1), 20)
+
+    def test_bit_reader_seek_past_cached_length_raises_eof(self):
+        io_obj = io.BytesIO(bytes(range(32)))
+        io_obj.seek(10)
+        fr = BitReader(io_obj)
+
+        fr.seek(40)
+        with self.assertRaises(EOFError):
+            fr.readbytes(1)
 
 def main():
     unittest.main()

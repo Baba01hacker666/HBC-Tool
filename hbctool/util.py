@@ -94,7 +94,14 @@ class BitReader(object):
     def __init__(self, f):
         self.input = f
         if hasattr(f, 'read'):
-            self.cache = f.read()
+            if hasattr(f, 'seek') and hasattr(f, 'tell'):
+                try:
+                    f.seek(0)
+                    self.cache = f.read()
+                except (OSError, ValueError):
+                    self.cache = f.read()
+            else:
+                self.cache = f.read()
         else:
             self.cache = bytes()
         self.accumulator = 0
@@ -179,6 +186,8 @@ class BitReader(object):
 
     def seek(self, i):
         self.read = i
+        self.accumulator = 0
+        self.bcount = 0
     
     def tell(self):
         return self.read
