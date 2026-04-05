@@ -96,10 +96,8 @@ class BitReader(object):
         if hasattr(f, 'read'):
             if hasattr(f, 'seek') and hasattr(f, 'tell'):
                 try:
-                    p = f.tell()
                     f.seek(0)
                     self.cache = f.read()
-                    f.seek(p)
                 except (OSError, ValueError):
                     self.cache = f.read()
             else:

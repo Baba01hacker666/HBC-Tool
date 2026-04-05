@@ -116,6 +116,15 @@ class TestFileUtilization(unittest.TestCase):
         fr.seek(20)
         self.assertEqual(fr.readbytes(1), 20)
 
+    def test_bit_reader_seek_past_cached_length_raises_eof(self):
+        io_obj = io.BytesIO(bytes(range(32)))
+        io_obj.seek(10)
+        fr = BitReader(io_obj)
+
+        fr.seek(40)
+        with self.assertRaises(EOFError):
+            fr.readbytes(1)
+
 def main():
     unittest.main()
 
