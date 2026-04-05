@@ -5,6 +5,10 @@ import os
 import shutil
 import re
 
+class HASMError(ValueError):
+    pass
+
+
 def write_func(f, func, i, hbc):
     functionName, paramCount, registerCount, symbolCount, insts, _ = func
     f.write(f"Function<{functionName}>{i}({paramCount} params, {registerCount} registers, {symbolCount} symbols):\n")
@@ -33,6 +37,8 @@ def write_func(f, func, i, hbc):
 def dump(hbc, path, force=False):
     
     if os.path.exists(path) and not force:
+        if os.path.abspath(path) in ("/", os.path.expanduser("~")):
+            raise HASMError(f"Refusing to remove unsafe output directory: {path}")
         c = input(f"'{path}' exists. Do you want to remove it ? (y/n): ").lower().strip()
         if c[:1] == "y":
             shutil.rmtree(path)
@@ -75,11 +81,13 @@ def read_all_func(hasm, hbc):
 
     for func_asm in func_asms:
         m = re.search(r"Function<.*?>([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):", func_asm)
-        assert m, f"Malicious function header: {func_asm}"
+        if not m:
+            raise HASMError(f"Malformed function header: {func_asm[:200]}")
 
         fid = int(m.group(1))
 
-        assert fid >= 0 and fid < functionCount, f"Malicious function ID: {fid} (must lower than {functionCount})"
+        if fid < 0 or fid >= functionCount:
+            raise HASMError(f"Invalid function ID {fid}; expected in range [0, {functionCount}).")
 
         rs[fid] = func_asm
     
@@ -90,7 +98,8 @@ def read_func(func_asms, i):
     func_asm = func_asms[i]
 
     m = re.search(r"Function<.*?>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction", func_asm, re.DOTALL)
-    assert m, f"Malicious function header: {func_asm}"
+    if not m:
+        raise HASMError(f"Malformed function block for function {i}.")
 
     functionName = m.group(1)
     paramCount = int(m.group(2))
@@ -109,17 +118,25 @@ def read_func(func_asms, i):
             continue
 
         inst_words = inst_line.split()
+        if not inst_words:
+            continue
 
         opcode = inst_words[0]
 
         operands = []
         for oper in inst_words[1:]:
-            oper_t, val = oper.replace(",", "").split(":")
+            cleaned = oper.replace(",", "")
+            if ":" not in cleaned:
+                raise HASMError(f"Malformed operand '{oper}' in function {i}.")
+            oper_t, val = cleaned.split(":", 1)
             
-            if oper_t == 'Double':
-                val = float(val)
-            else:
-                val = int(val)
+            try:
+                if oper_t == 'Double':
+                    val = float(val)
+                else:
+                    val = int(val)
+            except ValueError as exc:
+                raise HASMError(f"Invalid operand value '{val}' ({oper_t}) in function {i}.") from exc
             
             operands.append((oper_t, False, val))
         
@@ -129,10 +146,14 @@ def read_func(func_asms, i):
 
 
 def load(path):
-    assert os.path.exists(path), f"{path} does not exists."
-    assert os.path.exists(f"{path}/metadata.json"), f"metadata.json not found."
-    assert os.path.exists(f"{path}/string.json"), f"string.json not found."
-    assert os.path.exists(f"{path}/instruction.hasm"), f"instruction.hasm not found."
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{path} does not exist.")
+    if not os.path.exists(f"{path}/metadata.json"):
+        raise FileNotFoundError("metadata.json not found.")
+    if not os.path.exists(f"{path}/string.json"):
+        raise FileNotFoundError("string.json not found.")
+    if not os.path.exists(f"{path}/instruction.hasm"):
+        raise FileNotFoundError("instruction.hasm not found.")
 
     f = open(f"{path}/metadata.json", "r")
     hbc = hbcl.loado(json.load(f))
@@ -156,4 +177,3 @@ def load(path):
 
         
     return hbc
-

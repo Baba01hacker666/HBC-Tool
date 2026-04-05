@@ -87,10 +87,62 @@ class HBC94:
         if disasm:
             bc = assemble(insts)
             
-        assert len(bc) <= bytecodeSizeInBytes, "Overflowed instruction length is not supported yet."
+        if len(bc) > bytecodeSizeInBytes:
+            self.getObj()["inst"][start:start + bytecodeSizeInBytes] = bc
+        else:
+            memcpy(self.getObj()["inst"], bc, start, len(bc))
+            if len(bc) < bytecodeSizeInBytes:
+                del self.getObj()["inst"][start + len(bc):start + bytecodeSizeInBytes]
+
         functionHeader["bytecodeSizeInBytes"] = len(bc)
-        memcpy(self.getObj()["inst"], bc, start, len(bc))
+        self._rebuild_function_offsets()
         
+    def _rebuild_function_offsets(self):
+        function_headers = self.getObj()["functionHeaders"]
+        chunks = []
+        for function_header in function_headers:
+            offset = function_header["offset"]
+            bytecode_size = function_header["bytecodeSizeInBytes"]
+            start = offset - self.getObj()["instOffset"]
+            end = start + bytecode_size
+            chunks.append(self.getObj()["inst"][start:end])
+
+        new_inst = []
+        current_offset = self.getObj()["instOffset"]
+        for function_header, chunk in zip(function_headers, chunks):
+            function_header["offset"] = current_offset
+            function_header["bytecodeSizeInBytes"] = len(chunk)
+            new_inst.extend(chunk)
+            current_offset += len(chunk)
+
+        self.getObj()["inst"] = new_inst
+
+    def _shift_function_offsets(self, delta):
+        if delta == 0:
+            return
+
+        for function_header in self.getObj()["functionHeaders"]:
+            function_header["offset"] += delta
+
+    def _allocate_string_slot(self, byte_length):
+        header = self.getObj()["header"]
+        old_size = header["stringStorageSize"]
+        new_size = old_size + byte_length
+        old_aligned_size = (old_size + 3) & ~0x03
+        new_aligned_size = (new_size + 3) & ~0x03
+        delta = new_aligned_size - old_aligned_size
+
+        string_storage = self.getObj()["stringStorage"]
+        offset = len(string_storage)
+        string_storage.extend([0] * byte_length)
+
+        header["stringStorageSize"] = len(string_storage)
+        if delta:
+            self.getObj()["instOffset"] += delta
+            self._shift_function_offsets(delta)
+
+        return offset
+
     def getStringCount(self):
         return self.getObj()["header"]["stringCount"]
 
@@ -139,7 +191,19 @@ class HBC94:
             l = len(val)
             s = val.encode("utf-8")
         
-        assert l <= length, "Overflowed string length is not supported yet."
+        if l > length:
+            offset = self._allocate_string_slot(len(s))
+            if stringTableEntry["length"] >= INVALID_LENGTH:
+                stringTableOverflowEntries[stringTableEntry["offset"]]["offset"] = offset
+                stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
+            else:
+                stringTableEntry["length"] = INVALID_LENGTH
+                stringTableEntry["offset"] = len(stringTableOverflowEntries)
+                stringTableOverflowEntries.append({"offset": offset, "length": l})
+                self.getObj()["header"]["overflowStringCount"] = len(stringTableOverflowEntries)
+        else:
+            if isUTF16:
+                length *= 2
 
         memcpy(stringStorage, s, offset, len(s))
         

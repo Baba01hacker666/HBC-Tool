@@ -53,8 +53,10 @@ def load(f):
     magic = read(f, INIT_HEADER["magic"])
     version = read(f, INIT_HEADER["version"])
     f.seek(0)
-    assert magic == MAGIC, f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})"
-    assert version in HBC, f"The HBC version ({version}) is not supported."
+    if magic != MAGIC:
+        raise ValueError(f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})")
+    if version not in HBC:
+        raise ValueError(f"The HBC version ({version}) is not supported.")
 
     return HBC[version](f)
 
@@ -62,8 +64,10 @@ def loado(obj):
     magic = obj["header"]["magic"]
     version = obj["header"]["version"]
 
-    assert magic == MAGIC, f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})"
-    assert version in HBC, f"The HBC version ({version}) is not supported."
+    if magic != MAGIC:
+        raise ValueError(f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})")
+    if version not in HBC:
+        raise ValueError(f"The HBC version ({version}) is not supported.")
 
     hbc = HBC[version]()
     hbc.setObj(obj)
