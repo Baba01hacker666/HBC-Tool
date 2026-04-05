@@ -2,7 +2,7 @@
 name = "hbctool"
 version = "0.1.5"
 description = "A command-line interface for disassembling and assembling the Hermes Bytecode."
-authors = ["bongtrop", "ErbaZZ"]
+authors = ["baba01hacker"]
 keywords = ["hbc", "hermes", "bytecode", "reverse", "hacking"]
 classifiers = [
     'Development Status :: 3 - Alpha',
@@ -16,9 +16,9 @@ classifiers = [
 ]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/bongtrop/hbctool"
-repository = "https://github.com/bongtrop/hbctool"
-documentation = "https://github.com/bongtrop/hbctool"
+homepage = "https://github.com/Baba01hacker666/HBC-Tool"
+repository = "https://github.com/Baba01hacker666/HBC-Tool"
+documentation = "https://github.com/Baba01hacker666/HBC-Tool"
 
 [tool.poetry.dependencies]
 python = "^3.6"
@@ -27,8 +27,8 @@ docopt = "^0.6.2"
 [tool.poetry.dev-dependencies]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
 
 [tool.poetry.scripts]
 hbctool = "hbctool:main"
