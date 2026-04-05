@@ -39,7 +39,7 @@ class BitWriter(object):
     
     def _writebyte(self, b):
         assert not self.bcount, "bcount is not zero."
-        self.out.write(bytes([b]))
+        self.out.write(bytes((b,)))
         self.write += 1
 
     def writebits(self, v, n, remained=False):
@@ -52,15 +52,19 @@ class BitWriter(object):
             self._clearbits(n)
 
     def writebytes(self, v, n):
-        while n > 0:
-            self._writebyte(v & 0xff)
-            v = v >> 8
-            n -= 1
+        if n <= 0:
+            return v
+        assert not self.bcount, "bcount is not zero."
+        data = v.to_bytes(n, byteorder="little", signed=False)
+        self.out.write(data)
+        self.write += len(data)
         
-        return v
+        return v >> (n * 8)
 
     def flush(self):
-        self.out.write(bytes([self.accumulator]))
+        if not self.bcount:
+            return
+        self.out.write(bytes((self.accumulator,)))
         self.accumulator = 0
         self.bcount = 0
         self.remained = 0
@@ -122,8 +126,10 @@ class BitReader(object):
     def _readbyte(self):
         assert not self.bcount, "bcount is not zero."
         a = self.input.read(1)
+        if not a:
+            raise EOFError("Unexpected EOF while reading a byte.")
         self.read += 1
-        return ord(a)
+        return a[0]
 
     def readbits(self, n, remained=False):
         v = 0
@@ -138,12 +144,12 @@ class BitReader(object):
         return v
     
     def readbytes(self, n=1):
-        v = 0
-        while n > 0:
-            v = (v << 8) | self._readbyte()
-            n -= 1
-        
-        return v
+        assert not self.bcount, "bcount is not zero."
+        data = self.input.read(n)
+        if len(data) != n:
+            raise EOFError(f"Unexpected EOF while reading {n} bytes.")
+        self.read += n
+        return int.from_bytes(data, byteorder="big", signed=False)
 
     def seek(self, i):
         self.input.seek(i)
@@ -336,4 +342,3 @@ def from_double(val):
 def memcpy(dest, src, start, length):
     for i in range(length):
         dest[start + i] = src[i]
-
