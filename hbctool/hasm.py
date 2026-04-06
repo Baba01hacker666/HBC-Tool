@@ -159,6 +159,11 @@ def read_func(func_asms, i):
 
 
 
+def _strip_inline_comment(line):
+    """Remove trailing comments while preserving instruction content."""
+    return line.split(";", 1)[0].rstrip()
+
+
 def parse_hasm_functions(hasm_content, hbc):
     function_count = hbc.getFunctionCount()
     results = [None] * function_count
@@ -166,7 +171,7 @@ def parse_hasm_functions(hasm_content, hbc):
     lines = hasm_content.splitlines()
     i = 0
     while i < len(lines):
-        line = lines[i].strip()
+        line = _strip_inline_comment(lines[i].strip())
         if not line:
             i += 1
             continue
@@ -188,7 +193,7 @@ def parse_hasm_functions(hasm_content, hbc):
         i += 1
         insts = []
         while i < len(lines):
-            cur = lines[i].strip()
+            cur = _strip_inline_comment(lines[i].strip())
             if cur == "EndFunction":
                 break
 
@@ -223,7 +228,7 @@ def parse_hasm_functions(hasm_content, hbc):
             insts.append((opcode, operands))
             i += 1
 
-        if i >= len(lines) or lines[i].strip() != "EndFunction":
+        if i >= len(lines) or _strip_inline_comment(lines[i].strip()) != "EndFunction":
             raise HASMError(f"Malformed function block for function {fid}.")
 
         results[fid] = (function_name, param_count, register_count, symbol_count, insts, None)
