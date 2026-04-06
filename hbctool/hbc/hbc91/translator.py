@@ -1,8 +1,16 @@
 import pathlib
 import json
+import importlib.util
 from hbctool.util import *
 
 basepath = pathlib.Path(__file__).parent.absolute()
+
+_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil")
+if _FASTUTIL_SPEC is not None:
+    from hbctool import _fastutil
+else:
+    _fastutil = None
+
 
 operand_type = {
     "Reg8": (1, to_uint8, from_uint8),
@@ -27,6 +35,9 @@ for i, v in enumerate(opcode_mapper):
 f.close()
 
 def disassemble(bc):
+    if _fastutil is not None:
+        return _fastutil.disassemble_ops(bc, opcode_mapper, opcode_operand)
+
     i = 0
     insts = []
     while i < len(bc):
@@ -49,6 +60,9 @@ def disassemble(bc):
     return insts
 
 def assemble(insts):
+    if _fastutil is not None:
+        return _fastutil.assemble_ops(insts, opcode_mapper_inv)
+
     bc = []
     for opcode, operands in insts:
         op = opcode_mapper_inv[opcode]
