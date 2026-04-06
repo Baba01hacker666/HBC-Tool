@@ -181,9 +181,13 @@ def load(path):
         hbc.setString(string["id"], string["value"])
   
     func_asms = read_all_func(hasm_content, hbc)
+    offset_shift = 0
     for i in range(len(func_asms)):
         func = read_func(func_asms, i)
-        hbc.setFunction(i, func)
+        delta = hbc.setFunction(i, func, offset_shift=offset_shift)
+        offset_shift += delta
+
+    hbc._rebuild_function_offsets()
 
         
     return hbc
