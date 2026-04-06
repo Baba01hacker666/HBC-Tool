@@ -18,12 +18,36 @@ This video with MP4 format can be found at [/image/hbctool_example.mp4](/image/h
 
 ## Installation
 
-To install hbctool, simply use pip:
+### Quick install (pure Python)
 
+```bash
+python -m pip install hbctool
 ```
-build/install this or install the wheel provided:
-pip install --force-reinstall hbctool-0.1.5-96-py3-none-any.whl
+
+### Build + install locally (with optional C extension)
+
+1. Install build tooling (and a C++ compiler for the extension).
+2. Build and install from source:
+
+```bash
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -e .
+python setup.py build_ext --inplace
 ```
+
+3. Enable the C extension at runtime:
+
+```bash
+export HBCTOOL_FASTUTIL=1
+```
+
+4. Verify the extension is importable:
+
+```bash
+python -c "import hbctool._fastutil; print('fastutil ok')"
+```
+
+If the extension is not available, hbctool still works in pure-Python mode.
 
 ## Usage
 
@@ -120,11 +144,13 @@ cd hbctool
 python test.py
 ```
 
-I use poetry to build this tool. To build it yourself, simply execute:
+You can also build distributable artifacts:
 
-1. `poetry install`
-2. `poetry build`
-4. `pip install --force-reinstall dist/hbctool-<VERSION>-py3-none-any.whl`
+1. `python -m pip install --upgrade build`
+2. `python -m build`
+3. Install the generated wheel from `dist/` (`pip install --force-reinstall dist/hbctool-<VERSION>-*.whl`)
+
+If your wheel contains the compiled extension, it will be platform-tagged (not `py3-none-any`).
 
 ## Next Step
 

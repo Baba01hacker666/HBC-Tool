@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import re
+import io
 
 class HASMError(ValueError):
     pass
@@ -46,6 +47,11 @@ def write_func(f, func, i, hbc):
 
     f.write("EndFunction\n\n")
 
+
+def _write_json_file(path, obj, indent=None):
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=indent)
+
 def dump(hbc, path, force=False):
     
     if os.path.exists(path) and not force:
@@ -60,9 +66,7 @@ def dump(hbc, path, force=False):
     shutil.rmtree(path, ignore_errors=True)
     os.makedirs(path)
     # Write all obj to metadata.json
-    f = open(os.path.join(path, "metadata.json"), "w")
-    json.dump(hbc.getObj(), f)
-    f.close()
+    _write_json_file(f"{path}/metadata.json", hbc.getObj())
     
     stringCount = hbc.getStringCount()
     functionCount = hbc.getFunctionCount()
@@ -76,14 +80,14 @@ def dump(hbc, path, force=False):
             "value": val
         })
     
-    f = open(os.path.join(path, "string.json"), "w")
-    json.dump(ss, f, indent=4)
-    f.close()
+    _write_json_file(f"{path}/string.json", ss, indent=4)
 
-    f = open(os.path.join(path, "instruction.hasm"), "w")
+    instruction_buf = io.StringIO()
     for i in range(functionCount):
-        write_func(f, hbc.getFunction(i), i, hbc)
-    f.close()
+        write_func(instruction_buf, hbc.getFunction(i), i, hbc)
+
+    with open(f"{path}/instruction.hasm", "w") as f:
+        f.write(instruction_buf.getvalue())
 
 def read_all_func(hasm, hbc):
     functionCount = hbc.getFunctionCount()
@@ -159,6 +163,11 @@ def read_func(func_asms, i):
 
 
 
+def _strip_inline_comment(line):
+    """Remove trailing comments while preserving instruction content."""
+    return line.split(";", 1)[0].rstrip()
+
+
 def parse_hasm_functions(hasm_content, hbc):
     function_count = hbc.getFunctionCount()
     results = [None] * function_count
@@ -166,7 +175,7 @@ def parse_hasm_functions(hasm_content, hbc):
     lines = hasm_content.splitlines()
     i = 0
     while i < len(lines):
-        line = lines[i].strip()
+        line = _strip_inline_comment(lines[i].strip())
         if not line:
             i += 1
             continue
@@ -188,7 +197,7 @@ def parse_hasm_functions(hasm_content, hbc):
         i += 1
         insts = []
         while i < len(lines):
-            cur = lines[i].strip()
+            cur = _strip_inline_comment(lines[i].strip())
             if cur == "EndFunction":
                 break
 
@@ -223,7 +232,7 @@ def parse_hasm_functions(hasm_content, hbc):
             insts.append((opcode, operands))
             i += 1
 
-        if i >= len(lines) or lines[i].strip() != "EndFunction":
+        if i >= len(lines) or _strip_inline_comment(lines[i].strip()) != "EndFunction":
             raise HASMError(f"Malformed function block for function {fid}.")
 
         results[fid] = (function_name, param_count, register_count, symbol_count, insts, None)
@@ -245,17 +254,14 @@ def load(path):
     if not os.path.exists(os.path.join(path, "instruction.hasm")):
         raise FileNotFoundError("instruction.hasm not found.")
 
-    f = open(os.path.join(path, "metadata.json"), "r")
-    hbc = hbcl.loado(json.load(f))
-    f.close()
+    with open(f"{path}/metadata.json", "r") as f:
+        hbc = hbcl.loado(json.load(f))
 
-    f = open(os.path.join(path, "instruction.hasm"), "r")
-    hasm_content = f.read()
-    f.close()
+    with open(f"{path}/instruction.hasm", "r") as f:
+        hasm_content = f.read()
 
-    f = open(os.path.join(path, "string.json"), "r")
-    strings = json.load(f)
-    f.close()
+    with open(f"{path}/string.json", "r") as f:
+        strings = json.load(f)
 
     for string in strings:
         hbc.setString(string["id"], string["value"])
