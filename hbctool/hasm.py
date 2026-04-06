@@ -247,11 +247,11 @@ def parse_hasm_functions(hasm_content, hbc):
 def load(path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} does not exist.")
-    if not os.path.exists(f"{path}/metadata.json"):
+    if not os.path.exists(os.path.join(path, "metadata.json")):
         raise FileNotFoundError("metadata.json not found.")
-    if not os.path.exists(f"{path}/string.json"):
+    if not os.path.exists(os.path.join(path, "string.json")):
         raise FileNotFoundError("string.json not found.")
-    if not os.path.exists(f"{path}/instruction.hasm"):
+    if not os.path.exists(os.path.join(path, "instruction.hasm")):
         raise FileNotFoundError("instruction.hasm not found.")
 
     with open(f"{path}/metadata.json", "r") as f:

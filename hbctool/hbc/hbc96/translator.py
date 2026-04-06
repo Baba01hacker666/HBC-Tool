@@ -25,7 +25,7 @@ operand_type = {
     "Double": (8, to_double, from_double)
 }
 
-with open(f"{basepath}/data/opcode.json", "r") as f:
+with open(basepath / "data" / "opcode.json", "r") as f:
     opcode_operand = json.load(f)
     opcode_mapper = list(opcode_operand.keys())
     opcode_mapper_inv = {}
