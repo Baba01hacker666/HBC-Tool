@@ -79,9 +79,7 @@ class TestHBC62(unittest.TestCase):
             self.assertEqual(isUTF16, target_isUTF16)
             self.assertEqual(offset, target_offset)
             self.assertEqual(length, target_length)
-
-            # TODO : Implement this please
-            # self.assertEqual(val, target_val)
+            self.assertEqual(val, target_val)
 
     def test_translator(self):
         functionCount = self.hbc.getFunctionCount()
