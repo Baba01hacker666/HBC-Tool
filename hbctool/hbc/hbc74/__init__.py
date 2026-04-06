@@ -62,7 +62,7 @@ class HBC74:
 
         return functionNameStr, paramCount, registerCount, symbolCount, insts, functionHeader
     
-    def setFunction(self, fid, func, disasm=True):
+    def setFunction(self, fid, func, disasm=True, offset_shift=0):
         assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"
 
         functionName, paramCount, registerCount, symbolCount, insts, _ = func
@@ -80,7 +80,7 @@ class HBC74:
         bytecodeSizeInBytes = functionHeader["bytecodeSizeInBytes"]
 
         instOffset = self.getObj()["instOffset"]
-        start = offset - instOffset
+        start = offset - instOffset + offset_shift
         
         bc = insts
 
@@ -95,7 +95,7 @@ class HBC74:
                 del self.getObj()["inst"][start + len(bc):start + bytecodeSizeInBytes]
 
         functionHeader["bytecodeSizeInBytes"] = len(bc)
-        self._rebuild_function_offsets()
+        return len(bc) - bytecodeSizeInBytes
         
     def _rebuild_function_offsets(self):
         function_headers = self.getObj()["functionHeaders"]
