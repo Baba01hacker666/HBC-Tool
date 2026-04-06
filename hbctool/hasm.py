@@ -60,7 +60,7 @@ def dump(hbc, path, force=False):
     shutil.rmtree(path, ignore_errors=True)
     os.makedirs(path)
     # Write all obj to metadata.json
-    f = open(f"{path}/metadata.json", "w")
+    f = open(os.path.join(path, "metadata.json"), "w")
     json.dump(hbc.getObj(), f)
     f.close()
     
@@ -76,11 +76,11 @@ def dump(hbc, path, force=False):
             "value": val
         })
     
-    f = open(f"{path}/string.json", "w")
+    f = open(os.path.join(path, "string.json"), "w")
     json.dump(ss, f, indent=4)
     f.close()
 
-    f = open(f"{path}/instruction.hasm", "w")
+    f = open(os.path.join(path, "instruction.hasm"), "w")
     for i in range(functionCount):
         write_func(f, hbc.getFunction(i), i, hbc)
     f.close()
@@ -238,22 +238,22 @@ def parse_hasm_functions(hasm_content, hbc):
 def load(path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} does not exist.")
-    if not os.path.exists(f"{path}/metadata.json"):
+    if not os.path.exists(os.path.join(path, "metadata.json")):
         raise FileNotFoundError("metadata.json not found.")
-    if not os.path.exists(f"{path}/string.json"):
+    if not os.path.exists(os.path.join(path, "string.json")):
         raise FileNotFoundError("string.json not found.")
-    if not os.path.exists(f"{path}/instruction.hasm"):
+    if not os.path.exists(os.path.join(path, "instruction.hasm")):
         raise FileNotFoundError("instruction.hasm not found.")
 
-    f = open(f"{path}/metadata.json", "r")
+    f = open(os.path.join(path, "metadata.json"), "r")
     hbc = hbcl.loado(json.load(f))
     f.close()
 
-    f = open(f"{path}/instruction.hasm", "r")
+    f = open(os.path.join(path, "instruction.hasm"), "r")
     hasm_content = f.read()
     f.close()
 
-    f = open(f"{path}/string.json", "r")
+    f = open(os.path.join(path, "string.json"), "r")
     strings = json.load(f)
     f.close()
 

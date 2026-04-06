@@ -5,7 +5,7 @@ import json
 basepath = pathlib.Path(__file__).parent.absolute()
 
 # Open file
-bytecodeListFile = open(f"{basepath}/../raw/BytecodeList.def", "r")
+bytecodeListFile = open(basepath.parent / "raw" / "BytecodeList.def", "r")
 lines = bytecodeListFile.readlines()
 bytecodeListFile.close()
 
@@ -87,6 +87,6 @@ for line in lines:
         print(line_num, line)
 
 # Write json to file
-f = open(f"{basepath}/../data/opcode.json", "w")
+f = open(basepath.parent / "data" / "opcode.json", "w")
 json.dump(json_op, f, indent=4)
 f.close()
