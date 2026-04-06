@@ -6,15 +6,35 @@ import pathlib
 import json
 
 basepath = pathlib.Path(__file__).parent.absolute()
+repo_root = basepath.parents[2]
+
+
+def _fixture(*parts, required=True):
+    candidate_paths = [
+        basepath.joinpath("example", *parts),
+        repo_root.joinpath("Testfiles", *parts),
+    ]
+    for path in candidate_paths:
+        if path.exists():
+            return path
+    if required:
+        raise unittest.SkipTest(f"Missing required fixture: {'/'.join(parts)}")
+    return None
+
 class TestHBC74(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestHBC74, self).__init__(*args, **kwargs)
-        self.hbc = hbcl.load(open(f"{basepath}/example/index.android.bundle", "rb"))
-        self.objdump = open(f"{basepath}/example/objdump.out", "r").read()
-        self.pretty = open(f"{basepath}/example/pretty.out", "r").read()
-        self.raw = open(f"{basepath}/example/raw.out", "r").read()
+        self.hbc = hbcl.load(open(_fixture("index.android.bundle"), "rb"))
+        objdump_fixture = _fixture("objdump.out", required=False)
+        pretty_fixture = _fixture("pretty.out", required=False)
+        raw_fixture = _fixture("raw.out", required=False)
+        self.objdump = open(objdump_fixture, "r").read() if objdump_fixture else None
+        self.pretty = open(pretty_fixture, "r").read() if pretty_fixture else None
+        self.raw = open(raw_fixture, "r").read() if raw_fixture else None
 
     def test_get_function(self):
+        if self.objdump is None or self.pretty is None:
+            self.skipTest("Missing objdump.out/pretty.out fixtures")
         target_offsets = re.findall(r"([0-9a-f]+) \<_[0-9]+\>", self.objdump)
         target_args = re.findall(r"Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):", self.pretty)
 
@@ -39,6 +59,8 @@ class TestHBC74(unittest.TestCase):
             self.assertEqual(funcHeader["offset"], int(target_offset, 16))
     
     def test_get_string(self):
+        if self.pretty is None:
+            self.skipTest("Missing pretty.out fixture")
         target_strings = re.findall(r"[is][0-9]+\[([UTFASCI16-]+), ([0-9]+)..([0-9-]+)\].*?:\s?(.*)", self.pretty)
         stringCount = self.hbc.getStringCount()
 
@@ -70,14 +92,14 @@ class TestHBC74(unittest.TestCase):
             self.assertEqual(assemble(disassemble(bc)), bc)
 class TestParser74(unittest.TestCase):
     def test_hbc(self):
-        f = open(f"{basepath}/example/index.android.bundle", "rb")
+        f = open(_fixture("index.android.bundle"), "rb")
         hbc = hbcl.load(f)
         f.close()
         f = open("/tmp/hbctool_test.android.bundle", "wb")
         hbcl.dump(hbc, f)
         f.close()
 
-        f = open("hbc/hbc74/example/index.android.bundle", "rb")
+        f = open(_fixture("index.android.bundle"), "rb")
         a = f.read()
         f.close()
         f = open("/tmp/hbctool_test.android.bundle", "rb")
@@ -87,7 +109,7 @@ class TestParser74(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_hasm(self):
-        f = open(f"{basepath}/example/index.android.bundle", "rb")
+        f = open(_fixture("index.android.bundle"), "rb")
         a = hbcl.load(f)
         f.close()
         hasm.dump(a, "/tmp/hbctool_test", force=True)

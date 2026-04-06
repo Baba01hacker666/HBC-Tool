@@ -142,9 +142,10 @@ class BitReader(object):
     def _readbit(self, remaining=-1):
         if not self.bcount:
             self._ensure_cache(1)
-            if self.read < len(self.cache):
-                self.accumulator = self.cache[self.read]
-                self.read += 1
+            if self.read >= len(self.cache):
+                raise EOFError("Unexpected EOF while reading a bit.")
+            self.accumulator = self.cache[self.read]
+            self.read += 1
             self.bcount = 8
 
         if remaining > -1:
