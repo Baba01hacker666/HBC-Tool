@@ -1,6 +1,14 @@
-from setuptools import find_packages, setup
+from setuptools import Extension, find_packages, setup
 
 packages = find_packages()
+
+
+fastutil_extension = Extension(
+    "hbctool._fastutil",
+    sources=["hbctool/_fastutil.cpp"],
+    language="c++",
+    extra_compile_args=["-O3"],
+)
 
 hbc_package_data = {
     package: ["data/*.json", "raw/*"]
@@ -28,6 +36,7 @@ setup(
     install_requires=["docopt>=0.6.2,<0.7.0"],
     entry_points={"console_scripts": ["hbctool=hbctool:main"]},
     python_requires=">=3.6",
+    ext_modules=[fastutil_extension],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Natural Language :: English",

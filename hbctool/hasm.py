@@ -16,6 +16,9 @@ FUNCTION_BLOCK_RE = re.compile(
     r"Function<.*?>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
     re.DOTALL
 )
+FUNCTION_LINE_RE = re.compile(
+    r"^Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):$"
+)
 
 
 def write_func(f, func, i, hbc):
@@ -155,6 +158,83 @@ def read_func(func_asms, i):
     return functionName, paramCount, registerCount, symbolCount, insts, None
 
 
+
+def parse_hasm_functions(hasm_content, hbc):
+    function_count = hbc.getFunctionCount()
+    results = [None] * function_count
+
+    lines = hasm_content.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not line:
+            i += 1
+            continue
+
+        m = FUNCTION_LINE_RE.match(line)
+        if not m:
+            i += 1
+            continue
+
+        function_name = m.group(1)
+        fid = int(m.group(2))
+        param_count = int(m.group(3))
+        register_count = int(m.group(4))
+        symbol_count = int(m.group(5))
+
+        if fid < 0 or fid >= function_count:
+            raise HASMError(f"Invalid function ID {fid}; expected in range [0, {function_count}).")
+
+        i += 1
+        insts = []
+        while i < len(lines):
+            cur = lines[i].strip()
+            if cur == "EndFunction":
+                break
+
+            if not cur or cur.startswith(";"):
+                i += 1
+                continue
+
+            if "\t" in cur:
+                parts = [p for p in cur.split("\t") if p]
+                opcode = parts[0].strip()
+                operands_text = parts[1].strip() if len(parts) > 1 else ""
+            else:
+                sp = cur.split(None, 1)
+                opcode = sp[0]
+                operands_text = sp[1] if len(sp) > 1 else ""
+
+            operands = []
+            if operands_text:
+                for oper in operands_text.split(","):
+                    item = oper.strip()
+                    if not item:
+                        continue
+                    if ":" not in item:
+                        raise HASMError(f"Malformed operand '{item}' in function {fid}.")
+                    oper_t, val = item.split(":", 1)
+                    try:
+                        parsed_val = float(val) if oper_t == "Double" else int(val)
+                    except ValueError as exc:
+                        raise HASMError(f"Invalid operand value '{val}' ({oper_t}) in function {fid}.") from exc
+                    operands.append((oper_t, False, parsed_val))
+
+            insts.append((opcode, operands))
+            i += 1
+
+        if i >= len(lines) or lines[i].strip() != "EndFunction":
+            raise HASMError(f"Malformed function block for function {fid}.")
+
+        results[fid] = (function_name, param_count, register_count, symbol_count, insts, None)
+        i += 1
+
+    if any(v is None for v in results):
+        raise HASMError("Malformed HASM: missing function blocks.")
+
+    return results
+
+
 def load(path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} does not exist.")
@@ -180,10 +260,9 @@ def load(path):
     for string in strings:
         hbc.setString(string["id"], string["value"])
   
-    func_asms = read_all_func(hasm_content, hbc)
+    funcs = parse_hasm_functions(hasm_content, hbc)
     offset_shift = 0
-    for i in range(len(func_asms)):
-        func = read_func(func_asms, i)
+    for i, func in enumerate(funcs):
         delta = hbc.setFunction(i, func, offset_shift=offset_shift)
         offset_shift += delta
 

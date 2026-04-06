@@ -1,5 +1,15 @@
 
 from struct import pack, unpack
+import importlib.util
+import os
+
+
+_FASTUTIL_ENABLED = os.environ.get("HBCTOOL_FASTUTIL", "0") == "1"
+_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil") if _FASTUTIL_ENABLED else None
+if _FASTUTIL_SPEC is not None:
+    from hbctool import _fastutil
+else:
+    _fastutil = None
 
 # File Object
 
@@ -344,45 +354,72 @@ def write(f, v, format):
     
 # Unpacking
 def to_uint8(buf):
+    if _fastutil is not None:
+        return _fastutil.to_uint8(buf)
     return buf[0]
 
 def to_uint16(buf):
+    if _fastutil is not None:
+        return _fastutil.to_uint16(buf)
     return unpack("<H", bytes(buf[:2]))[0]
 
 def to_uint32(buf):
+    if _fastutil is not None:
+        return _fastutil.to_uint32(buf)
     return unpack("<L", bytes(buf[:4]))[0]
 
 def to_int8(buf):
+    if _fastutil is not None:
+        return _fastutil.to_int8(buf)
     return unpack("<b", bytes([buf[0]]))[0]
 
 def to_int32(buf):
+    if _fastutil is not None:
+        return _fastutil.to_int32(buf)
     return unpack("<i", bytes(buf[:4]))[0]
 
 def to_double(buf):
+    if _fastutil is not None:
+        return _fastutil.to_double(buf)
     return unpack("<d", bytes(buf[:8]))[0]
 
 # Packing
 
 def from_uint8(val):
+    if _fastutil is not None:
+        return _fastutil.from_uint8(val)
     return [val]
 
 def from_uint16(val):
+    if _fastutil is not None:
+        return _fastutil.from_uint16(val)
     return list(pack("<H", val))
 
 def from_uint32(val):
+    if _fastutil is not None:
+        return _fastutil.from_uint32(val)
     return list(pack("<L", val))
 
 def from_int8(val):
+    if _fastutil is not None:
+        return _fastutil.from_int8(val)
     return list(pack("<b", val))
 
 def from_int32(val):
+    if _fastutil is not None:
+        return _fastutil.from_int32(val)
     return list(pack("<i", val))
 
 def from_double(val):
+    if _fastutil is not None:
+        return _fastutil.from_double(val)
     return list(pack("<d", val))
 
 # Buf Function
 
 def memcpy(dest, src, start, length):
+    if _fastutil is not None:
+        _fastutil.memcpy(dest, src, start, length)
+        return
     for i in range(length):
         dest[start + i] = src[i]
