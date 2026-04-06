@@ -70,14 +70,20 @@ Build the optional C++ acceleration module first:
 python setup.py build_ext --inplace
 ```
 
+Enable the optional C++ runtime path (safe opt-in):
+
+```bash
+export HBCTOOL_FASTUTIL=1
+```
+
 Then run the benchmark helper to compare pure Python mode vs C++ mode and guard against unexpectedly large output bundles:
 
 ```bash
-python scripts/benchmark_roundtrip.py Testfiles/index.android.bundle --iterations 2 --max-size-ratio 1.10 --json output/bench/report.json
+python scripts/benchmark_roundtrip.py Testfiles/index.android.bundle --iterations 2 --max-size-ratio 1.10 --min-core-speedup 2.0 --json output/bench/report.json
 ```
 
-The report includes timing for both modes, calculated speedup, output/input size ratios, and SHA-256 equality checks.
-If either mode exceeds `--max-size-ratio`, the script exits non-zero so you can enforce this in CI.
+The report includes timing for both modes, calculated speedup, output/input size ratios, and a core memcpy speedup check.
+If either mode exceeds `--max-size-ratio` or core speedup is below `--min-core-speedup`, the script exits non-zero for CI gating.
 
 ## Support
 

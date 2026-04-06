@@ -1,11 +1,12 @@
 import pathlib
 import json
 import importlib.util
+import os
 from hbctool.util import *
 
 basepath = pathlib.Path(__file__).parent.absolute()
 
-_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil")
+_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil") if os.environ.get("HBCTOOL_FASTUTIL", "0") == "1" else None
 if _FASTUTIL_SPEC is not None:
     from hbctool import _fastutil
 else:

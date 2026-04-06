@@ -1,9 +1,11 @@
 
 from struct import pack, unpack
 import importlib.util
+import os
 
 
-_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil")
+_FASTUTIL_ENABLED = os.environ.get("HBCTOOL_FASTUTIL", "0") == "1"
+_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil") if _FASTUTIL_ENABLED else None
 if _FASTUTIL_SPEC is not None:
     from hbctool import _fastutil
 else:

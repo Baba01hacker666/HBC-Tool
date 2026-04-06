@@ -54,21 +54,24 @@ def set_fastutil_mode(enable_cpp: bool) -> bool:
 
     Returns True if C++ mode is active after the call.
     """
-    if not enable_cpp:
+    module = None
+    if enable_cpp:
+        spec = importlib.util.find_spec("hbctool._fastutil")
+        if spec is None:
+            util._fastutil = None
+            module = None
+        else:
+            module = importlib.import_module("hbctool._fastutil")
+            util._fastutil = module
+    else:
         util._fastutil = None
-        return False
 
-    if util._fastutil is not None:
-        return True
+    # Keep all already-loaded translator modules in sync.
+    for mod_name, mod in list(sys.modules.items()):
+        if mod_name and mod_name.endswith(".translator") and hasattr(mod, "_fastutil"):
+            mod._fastutil = module
 
-    spec = importlib.util.find_spec("hbctool._fastutil")
-    if spec is None:
-        util._fastutil = None
-        return False
-
-    module = importlib.import_module("hbctool._fastutil")
-    util._fastutil = module
-    return True
+    return module is not None
 
 
 def run_roundtrip(input_file: Path, out_dir: Path, label: str, enable_cpp: bool, force_clean: bool = True) -> RunMetrics:
@@ -136,6 +139,18 @@ def benchmark_mode(mode_name: str, input_file: Path, out_dir: Path, iterations: 
     return summarize(mode_name, runs)
 
 
+
+
+def benchmark_core_memcpy(enable_cpp: bool, loops: int = 10000) -> float:
+    set_fastutil_mode(enable_cpp=enable_cpp)
+    src = list(range(256)) * 40
+    started = time.perf_counter()
+    for _ in range(loops):
+        dest = [0] * len(src)
+        util.memcpy(dest, src, 0, len(src))
+    return time.perf_counter() - started
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark hbctool and enforce output-size guardrails.")
     parser.add_argument("input", type=Path, help="Path to source Hermes bytecode bundle")
@@ -143,6 +158,7 @@ def main() -> int:
     parser.add_argument("--iterations", type=int, default=2, help="Number of runs per mode")
     parser.add_argument("--max-size-ratio", type=float, default=1.10, help="Fail if output/input ratio exceeds this")
     parser.add_argument("--json", type=Path, default=None, help="Optional JSON output path")
+    parser.add_argument("--min-core-speedup", type=float, default=2.0, help="Required memcpy core speedup for C++ mode")
     args = parser.parse_args()
 
     if args.iterations < 1:
@@ -166,16 +182,22 @@ def main() -> int:
         "cpp_size_ratio": cpp_summary["last_size_ratio_vs_input"] if cpp_summary else None,
     }
 
+    core = None
     if cpp_summary:
         comparisons["speedup_vs_python"] = py_summary["mean_total_seconds"] / cpp_summary["mean_total_seconds"]
+        py_core = benchmark_core_memcpy(enable_cpp=False)
+        cpp_core = benchmark_core_memcpy(enable_cpp=True)
+        core = {"python_memcpy_seconds": py_core, "cpp_memcpy_seconds": cpp_core, "memcpy_speedup": py_core / cpp_core}
 
     report = {
         "input": str(args.input),
         "iterations": args.iterations,
         "max_size_ratio": args.max_size_ratio,
+        "min_core_speedup": args.min_core_speedup,
         "python": py_summary,
         "cpp": cpp_summary,
         "comparisons": comparisons,
+        "core_benchmark": core,
     }
 
     print("\n=== hbctool benchmark report ===")
@@ -188,6 +210,8 @@ def main() -> int:
         print(f"cpp mean total: {cpp_summary['mean_total_seconds']:.3f}s")
         print(f"cpp size ratio: {cpp_summary['last_size_ratio_vs_input']:.4f}")
         print(f"speedup (python/cpp): {comparisons['speedup_vs_python']:.3f}x")
+        if core:
+            print(f"core memcpy speedup: {core['memcpy_speedup']:.3f}x")
     else:
         print("cpp fastutil extension not available; only python mode measured.")
 
@@ -203,6 +227,10 @@ def main() -> int:
     if any(r > args.max_size_ratio for r in failing_ratios):
         print(f"ERROR: one or more modes exceeded max size ratio {args.max_size_ratio:.4f}")
         return 2
+
+    if core and core["memcpy_speedup"] < args.min_core_speedup:
+        print(f"ERROR: core memcpy speedup {core['memcpy_speedup']:.3f}x is below required {args.min_core_speedup:.3f}x")
+        return 3
 
     return 0
 
