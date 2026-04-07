@@ -66,7 +66,7 @@ def dump(hbc, path, force=False):
     shutil.rmtree(path, ignore_errors=True)
     os.makedirs(path)
     # Write all obj to metadata.json
-    _write_json_file(f"{path}/metadata.json", hbc.getObj())
+    _write_json_file(os.path.join(path, "metadata.json"), hbc.getObj())
     
     stringCount = hbc.getStringCount()
     functionCount = hbc.getFunctionCount()
@@ -80,13 +80,13 @@ def dump(hbc, path, force=False):
             "value": val
         })
     
-    _write_json_file(f"{path}/string.json", ss, indent=4)
+    _write_json_file(os.path.join(path, "string.json"), ss, indent=4)
 
     instruction_buf = io.StringIO()
     for i in range(functionCount):
         write_func(instruction_buf, hbc.getFunction(i), i, hbc)
 
-    with open(f"{path}/instruction.hasm", "w") as f:
+    with open(os.path.join(path, "instruction.hasm"), "w") as f:
         f.write(instruction_buf.getvalue())
 
 def read_all_func(hasm, hbc):
@@ -254,13 +254,13 @@ def load(path):
     if not os.path.exists(os.path.join(path, "instruction.hasm")):
         raise FileNotFoundError("instruction.hasm not found.")
 
-    with open(f"{path}/metadata.json", "r") as f:
+    with open(os.path.join(path, "metadata.json"), "r") as f:
         hbc = hbcl.loado(json.load(f))
 
-    with open(f"{path}/instruction.hasm", "r") as f:
+    with open(os.path.join(path, "instruction.hasm"), "r") as f:
         hasm_content = f.read()
 
-    with open(f"{path}/string.json", "r") as f:
+    with open(os.path.join(path, "string.json"), "r") as f:
         strings = json.load(f)
 
     for string in strings:
