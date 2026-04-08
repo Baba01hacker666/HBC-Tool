@@ -10,6 +10,13 @@ fastutil_extension = Extension(
     extra_compile_args=["-O3"],
 )
 
+bitcodec_extension = Extension(
+    "hbctool._bitcodec",
+    sources=["hbctool/_bitcodec.cpp"],
+    language="c++",
+    extra_compile_args=["-O3"],
+)
+
 hbc_package_data = {
     package: ["data/*.json", "raw/*"]
     for package in packages
@@ -36,7 +43,7 @@ setup(
     install_requires=["docopt>=0.6.2,<0.7.0"],
     entry_points={"console_scripts": ["hbctool=hbctool:main"]},
     python_requires=">=3.6",
-    ext_modules=[fastutil_extension],
+    ext_modules=[fastutil_extension, bitcodec_extension],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Natural Language :: English",

@@ -6,10 +6,16 @@ import os
 
 _FASTUTIL_ENABLED = os.environ.get("HBCTOOL_FASTUTIL", "0") == "1"
 _FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil") if _FASTUTIL_ENABLED else None
+_BITCODEC_SPEC = importlib.util.find_spec("hbctool._bitcodec") if _FASTUTIL_ENABLED else None
 if _FASTUTIL_SPEC is not None:
     from hbctool import _fastutil
 else:
     _fastutil = None
+
+if _BITCODEC_SPEC is not None:
+    from hbctool import _bitcodec
+else:
+    _bitcodec = None
 
 # File Object
 
@@ -230,7 +236,10 @@ def readuint(f, bits=64, signed=False):
 
     n = bits // 8
     data = f.read_raw(n)
-    
+
+    if _bitcodec is not None and n <= 8:
+        return _bitcodec.le_to_uint(data, signed=signed)
+
     x = int.from_bytes(data, byteorder="little", signed=signed)
     return x
 
@@ -300,7 +309,10 @@ def writeuint(f, v, bits=64, signed=False):
     n = bits // 8
     assert not f.bcount, "bcount is not zero."
     v = v & ((1 << bits) - 1)
-    data = v.to_bytes(n, byteorder="little", signed=False)
+    if _bitcodec is not None and n <= 8:
+        data = _bitcodec.uint_to_le(v, n)
+    else:
+        data = v.to_bytes(n, byteorder="little", signed=False)
     f.out.write(data)
     f.write += n
 
