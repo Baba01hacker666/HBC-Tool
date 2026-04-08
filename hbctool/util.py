@@ -433,5 +433,4 @@ def memcpy(dest, src, start, length):
     if _fastutil is not None:
         _fastutil.memcpy(dest, src, start, length)
         return
-    for i in range(length):
-        dest[start + i] = src[i]
+    dest[start:start+length] = src[:length]
