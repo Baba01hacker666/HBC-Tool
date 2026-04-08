@@ -1,5 +1,6 @@
 
 from struct import pack, unpack
+from struct import error as StructError
 import importlib.util
 import os
 
@@ -367,32 +368,50 @@ def write(f, v, format):
 # Unpacking
 def to_uint8(buf):
     if _fastutil is not None:
-        return _fastutil.to_uint8(buf)
+        try:
+            return _fastutil.to_uint8(buf)
+        except IndexError:
+            raise StructError("unpack requires a buffer of 1 bytes")
     return buf[0]
 
 def to_uint16(buf):
     if _fastutil is not None:
-        return _fastutil.to_uint16(buf)
+        try:
+            return _fastutil.to_uint16(buf)
+        except IndexError:
+            raise StructError("unpack requires a buffer of 2 bytes")
     return unpack("<H", bytes(buf[:2]))[0]
 
 def to_uint32(buf):
     if _fastutil is not None:
-        return _fastutil.to_uint32(buf)
+        try:
+            return _fastutil.to_uint32(buf)
+        except IndexError:
+            raise StructError("unpack requires a buffer of 4 bytes")
     return unpack("<L", bytes(buf[:4]))[0]
 
 def to_int8(buf):
     if _fastutil is not None:
-        return _fastutil.to_int8(buf)
+        try:
+            return _fastutil.to_int8(buf)
+        except IndexError:
+            raise StructError("unpack requires a buffer of 1 bytes")
     return unpack("<b", bytes([buf[0]]))[0]
 
 def to_int32(buf):
     if _fastutil is not None:
-        return _fastutil.to_int32(buf)
+        try:
+            return _fastutil.to_int32(buf)
+        except IndexError:
+            raise StructError("unpack requires a buffer of 4 bytes")
     return unpack("<i", bytes(buf[:4]))[0]
 
 def to_double(buf):
     if _fastutil is not None:
-        return _fastutil.to_double(buf)
+        try:
+            return _fastutil.to_double(buf)
+        except IndexError:
+            raise StructError("unpack requires a buffer of 8 bytes")
     return unpack("<d", bytes(buf[:8]))[0]
 
 # Packing
