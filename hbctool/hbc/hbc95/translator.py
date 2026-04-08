@@ -61,7 +61,7 @@ def disassemble(bc):
 
 def assemble(insts):
     if _fastutil is not None:
-        return _fastutil.assemble_ops(insts, opcode_mapper_inv)
+        return _fastutil.assemble_ops(insts, opcode_mapper_inv, opcode_operand)
 
     bc = []
     for opcode, operands in insts:
