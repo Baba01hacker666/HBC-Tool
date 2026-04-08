@@ -296,7 +296,8 @@ static PyObject* fu_disassemble_ops(PyObject*, PyObject* args) {
 static PyObject* fu_assemble_ops(PyObject*, PyObject* args) {
     PyObject* insts;
     PyObject* opcode_mapper_inv;
-    if (!PyArg_ParseTuple(args, "OO", &insts, &opcode_mapper_inv)) return nullptr;
+    PyObject* opcode_operand = nullptr;
+    if (!PyArg_ParseTuple(args, "OO|O", &insts, &opcode_mapper_inv, &opcode_operand)) return nullptr;
 
     Py_ssize_t n = PySequence_Size(insts);
     if (n < 0) return nullptr;
@@ -361,6 +362,31 @@ static PyObject* fu_assemble_ops(PyObject*, PyObject* args) {
             Py_DECREF(operands);
             Py_DECREF(out);
             return nullptr;
+        }
+
+        if (opcode_operand) {
+            PyObject* expected = PyDict_GetItem(opcode_operand, opcode);  // borrowed
+            if (!expected) {
+                Py_DECREF(opcode);
+                Py_DECREF(operands);
+                Py_DECREF(out);
+                PyErr_SetString(PyExc_KeyError, "opcode missing in opcode_operand");
+                return nullptr;
+            }
+            Py_ssize_t expected_len = PySequence_Size(expected);
+            if (expected_len < 0) {
+                Py_DECREF(opcode);
+                Py_DECREF(operands);
+                Py_DECREF(out);
+                return nullptr;
+            }
+            if (expected_len != m) {
+                Py_DECREF(opcode);
+                Py_DECREF(operands);
+                Py_DECREF(out);
+                PyErr_SetString(PyExc_ValueError, "malicious instruction operand length mismatch");
+                return nullptr;
+            }
         }
 
         for (Py_ssize_t k = 0; k < m; ++k) {
