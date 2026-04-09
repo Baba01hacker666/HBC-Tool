@@ -1,160 +1,156 @@
-# hbctool 
+# hbctool
 
-[![Python 3.x](https://img.shields.io/badge/python-3.x-yellow.svg)](https://python.org) [![PyPI version](https://badge.fury.io/py/hbctool.svg)](https://badge.fury.io/py/hbctool) [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](/LICENSE)
+[![Python 3.x](https://img.shields.io/badge/python-3.x-yellow.svg)](https://python.org)
+[![PyPI version](https://badge.fury.io/py/hbctool.svg)](https://badge.fury.io/py/hbctool)
+[![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](/LICENSE)
 
+`hbctool` is a command-line tool for disassembling and assembling Hermes bytecode bundles used by React Native applications.
 
-UPDATED AND REMADE FULLY BY DORAEMON
+Originally created by `baba01hacker` and continued by `Doraemon cyber team`.
 
-A command-line interface for disassembling and assembling the Hermes Bytecode.
+## Why hbctool
 
-Since the React Native team created their own JavaScript engine (named Hermes) for running the React Native application, the JavaScript source code is often compiled to the Hermes bytecode. In the penetration test project, I found that some React Native applications have already been migrated to the Hermes engine. It is really head for me to analyze or patch those applications. Therefore, I created hbctool for helping any pentester to test the Hermes bytecode.
+React Native apps can ship JavaScript through the Hermes engine, which compiles application code into Hermes bytecode. That makes reverse engineering, inspection, and patching harder than working with plain JavaScript bundles.
 
-> [Hermes](https://hermesengine.dev/) is an open-source JavaScript engine optimized for running React Native apps on Android. For many apps, enabling Hermes will result in improved start-up time, decreased memory usage, and smaller app size. At this time Hermes is an opt-in React Native feature, and this guide explains how to enable it.
-## Screenshot
+`hbctool` helps with that workflow by letting you:
 
-![hbctool Example](/image/hbctool_example.gif)
+- disassemble a Hermes bundle into a readable HASM representation
+- modify metadata, strings, and instructions
+- rebuild a valid Hermes bytecode bundle from the edited output
+- use either the pure-Python path or the optional native C++ acceleration path
 
-This video with MP4 format can be found at [/image/hbctool_example.mp4](/image/hbctool_example.mp4).
+## Features
+
+- Disassemble Hermes bytecode bundles into a directory with metadata, strings, and instructions.
+- Assemble edited HASM output back into a Hermes bundle.
+- Optional C++ acceleration for faster low-level operations.
+- Test coverage for pure-Python and native execution paths.
+- Support for Hermes bytecode versions `59`, `62`, `74`, `76`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, and `96`.
 
 ## Installation
 
-### Quick install (pure Python)
+### Quick install
 
 ```bash
-python -m pip install hbctool
+python3 -m pip install hbctool
 ```
 
-### Build + install locally (with optional C extension)
-
-1. Install build tooling (and a C++ compiler for the extension).
-2. Build and install from source:
+### Local development install
 
 ```bash
-python -m pip install --upgrade pip setuptools wheel
-python -m pip install -e .
-python setup.py build_ext --inplace
+python3 -m pip install --upgrade pip setuptools wheel
+python3 -m pip install -e .
 ```
 
-3. Enable the C extension at runtime:
+### Build the optional native extension
+
+```bash
+python3 setup.py build_ext --inplace
+```
+
+Enable the accelerated path at runtime:
 
 ```bash
 export HBCTOOL_FASTUTIL=1
 ```
 
-4. Verify the extension is importable:
+Verify that the native modules are available:
 
 ```bash
-python -c "import hbctool._fastutil; print('fastutil ok')"
+python3 -c "import hbctool._fastutil, hbctool._bitcodec; print('native extensions ok')"
 ```
 
-If the extension is not available, hbctool still works in pure-Python mode.
+If the extensions are not present, `hbctool` still works in pure-Python mode.
 
 ## Usage
 
-Please run `hbctool --help` to show the usage.
+Show help:
 
+```bash
+hbctool --help
 ```
-hbctool --help   
-A command-line interface for disassembling and assembling
-the Hermes Bytecode.
 
+CLI syntax:
+
+```text
 Usage:
     hbctool disasm <HBC_FILE> [<HASM_PATH>]
     hbctool asm [<HASM_PATH>] [<HBC_FILE>]
     hbctool --help
     hbctool --version
-
-Operation:
-    disasm              Disassemble Hermes Bytecode
-    asm                 Assemble Hermes Bytecode
-
-Args:
-    HBC_FILE            Target HBC file
-    HASM_PATH           Target HASM directory path
-
-Options:
-    --version           Show hbctool version
-    --help              Show hbctool help manual
+```
 
 Examples:
-    hbctool disasm index.android.bundle test_hasm
-    hbctool asm test_hasm index.android.bundle
-    hbctool disasm index.android.bundle             # default output path: hasm/
-    hbctool asm                                     # default input path: hasm/, output file: index.android.bundle
-```
-
-> For Android, the HBC file normally locates at `assets` directory with `index.android.bundle` filename.
-
-
-## Benchmarking speed and output-size safety
-
-Build the optional C++ acceleration module first:
 
 ```bash
-python setup.py build_ext --inplace
+hbctool disasm index.android.bundle test_hasm
+hbctool asm test_hasm index.android.bundle
+hbctool disasm index.android.bundle
+hbctool asm
 ```
 
-Enable the optional C++ runtime path (safe opt-in):
+By default:
+
+- `disasm` writes to `hasm/`
+- `asm` reads from `hasm/` and writes `index.android.bundle`
+
+For Android targets, the Hermes bundle is commonly found under the app `assets/` directory as `index.android.bundle`.
+
+## Output Layout
+
+A disassembly writes three files:
+
+- `metadata.json`
+- `string.json`
+- `instruction.hasm`
+
+This makes it practical to inspect strings, metadata, and instructions separately before rebuilding.
+
+## Benchmarking
+
+You can benchmark the round-trip path and compare pure Python against the native path with the helper script:
 
 ```bash
-export HBCTOOL_FASTUTIL=1
+python3 scripts/benchmark_roundtrip.py Testfiles/index.android.bundle --iterations 2 --max-size-ratio 1.10 --min-core-speedup 2.0 --json output/bench/report.json
 ```
 
-Then run the benchmark helper to compare pure Python mode vs C++ mode and guard against unexpectedly large output bundles:
+The report includes:
+
+- timing for both execution modes
+- computed speedup
+- output-to-input size ratio checks
+- a low-level memcpy speedup check
+
+The script exits non-zero when configured safety or performance thresholds are not met, which makes it suitable for CI gating.
+
+## Development
+
+Run the test suite:
 
 ```bash
-python scripts/benchmark_roundtrip.py Testfiles/index.android.bundle --iterations 2 --max-size-ratio 1.10 --min-core-speedup 2.0 --json output/bench/report.json
+python3 -m pytest -q
 ```
 
-The report includes timing for both modes, calculated speedup, output/input size ratios, and a core memcpy speedup check.
-If either mode exceeds `--max-size-ratio` or core speedup is below `--min-core-speedup`, the script exits non-zero for CI gating.
+Run the test suite with the native path enabled:
 
-## Support
-
-hbctool currently supports the following Hermes Bytecode version:
-
-- [Hermes Bytecode version 59](/hbctool/hbc/hbc59/)
-- [Hermes Bytecode version 62](/hbctool/hbc/hbc62/)
-- [Hermes Bytecode version 74](/hbctool/hbc/hbc74/)
-- [Hermes Bytecode version 76](/hbctool/hbc/hbc76/)
-- [Hermes Bytecode version 83](/hbctool/hbc/hbc83/) [New]
-- [Hermes Bytecode version 84](/hbctool/hbc/hbc84/) [Fixed]
-- [Hermes Bytecode version 85](/hbctool/hbc/hbc85/) [Fixed]
-- [Hermes Bytecode version 86](/hbctool/hbc/hbc86/) [New]
-- [Hermes Bytecode version 87](/hbctool/hbc/hbc87/) [New]
-- [Hermes Bytecode version 88](/hbctool/hbc/hbc88/) [New]
-- [Hermes Bytecode version 89](/hbctool/hbc/hbc89/) [New]
-- [Hermes Bytecode version 90](/hbctool/hbc/hbc90/) [New]
-- [Hermes Bytecode version 91](/hbctool/hbc/hbc91/) [New]
-- [Hermes Bytecode version 92](/hbctool/hbc/hbc92/) [New]
-- [Hermes Bytecode version 93](/hbctool/hbc/hbc93/) [New]
-- [Hermes Bytecode version 94](/hbctool/hbc/hbc94/) [New]
-- [Hermes Bytecode version 95](/hbctool/hbc/hbc95/) [New]
-- [Hermes Bytecode version 96](/hbctool/hbc/hbc96/) [New]
-
-
-## Contribution
-
-Feel free to create an issue or submit the merge request. Anyway you want to contribute this project. I'm very happy about it.
-
-However, please run the unit test before submiting the pull request.
-
-```
-cd hbctool
-python test.py
+```bash
+HBCTOOL_FASTUTIL=1 python3 -m pytest -q
 ```
 
-You can also build distributable artifacts:
+Build distributable artifacts:
 
-1. `python -m pip install --upgrade build`
-2. `python -m build`
-3. Install the generated wheel from `dist/` (`pip install --force-reinstall dist/hbctool-<VERSION>-*.whl`)
+```bash
+python3 -m pip install --upgrade build
+python3 -m build
+```
 
-If your wheel contains the compiled extension, it will be platform-tagged (not `py3-none-any`).
+If the built wheel includes the compiled extension, it will be platform-tagged rather than `py3-none-any`.
 
-## Next Step
+## Credits
 
-- Add the other Hermes bytecode versions
-- Create a class abstraction
-- Support overflow patching
-- Do all TODO, NOTE, FIXME in source code
+- Original work: `baba01hacker`
+- Ongoing maintenance and remastering: `Doraemon cyber team`
+
+## License
+
+This project is released under the MIT License. See [LICENSE](/LICENSE).
