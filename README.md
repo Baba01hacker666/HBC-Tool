@@ -1,12 +1,18 @@
-# hbctool
+<p align="center">
+  <img src="image/hbctool-logo.svg" alt="hbctool logo" width="900">
+</p>
 
-[![Python 3.x](https://img.shields.io/badge/python-3.x-yellow.svg)](https://python.org)
-[![PyPI version](https://badge.fury.io/py/hbctool.svg)](https://badge.fury.io/py/hbctool)
-[![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg)](/LICENSE)
+<p align="center">
+  <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.x-yellow.svg" alt="Python 3.x"></a>
+  <a href="https://badge.fury.io/py/hbctool"><img src="https://badge.fury.io/py/hbctool.svg" alt="PyPI version"></a>
+  <a href="/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg" alt="MIT License"></a>
+</p>
 
-`hbctool` is a command-line tool for disassembling and assembling Hermes bytecode bundles used by React Native applications.
-
-Originally created by `baba01hacker` and continued by `Doraemon cyber team`.
+<p align="center">
+  <strong>A Hermes bytecode disassembler and assembler for React Native bundles.</strong>
+  <br>
+  Originally created by <code>baba01hacker</code> and continued by <code>Doraemon cyber team</code>.
+</p>
 
 ## Why hbctool
 

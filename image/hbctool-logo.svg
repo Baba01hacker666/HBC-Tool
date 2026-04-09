@@ -1,0 +1,44 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">hbctool logo</title>
+  <desc id="desc">Colorful but restrained logo for hbctool by baba01hacker.</desc>
+  <defs>
+    <linearGradient id="panel" x1="88" y1="56" x2="344" y2="264" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF4DD"/>
+      <stop offset="1" stop-color="#F6FBFF"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="120" y1="72" x2="328" y2="248" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF9B71"/>
+      <stop offset="0.5" stop-color="#F2C14E"/>
+      <stop offset="1" stop-color="#2E86AB"/>
+    </linearGradient>
+    <filter id="shadow" x="56" y="36" width="328" height="248" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#17324D" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="320" rx="28" fill="#FCFCFA"/>
+  <g filter="url(#shadow)">
+    <rect x="88" y="56" width="264" height="208" rx="32" fill="url(#panel)"/>
+    <rect x="104" y="72" width="232" height="176" rx="26" fill="#102033"/>
+    <path d="M144 116L184 148L144 180" stroke="url(#accent)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M210 196H288" stroke="#E9F1F7" stroke-width="16" stroke-linecap="round"/>
+    <path d="M234 96L278 96" stroke="#26445F" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+    <path d="M234 120L306 120" stroke="#26445F" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <g>
+    <rect x="403" y="90" width="14" height="118" rx="7" fill="url(#accent)"/>
+    <text x="446" y="150" fill="#122033" font-size="84" font-weight="800" font-family="'Segoe UI', 'Trebuchet MS', Verdana, sans-serif" letter-spacing="-2">hbc</text>
+    <text x="640" y="150" fill="#2E86AB" font-size="84" font-weight="800" font-family="'Segoe UI', 'Trebuchet MS', Verdana, sans-serif" letter-spacing="-2">tool</text>
+    <text x="448" y="204" fill="#5B6777" font-size="28" font-weight="600" font-family="'Segoe UI', 'Trebuchet MS', Verdana, sans-serif" letter-spacing="2.5">DISASSEMBLE • EDIT • REBUILD</text>
+  </g>
+
+  <g>
+    <rect x="920" y="108" width="206" height="48" rx="24" fill="#FFF1E8" stroke="#F4B183"/>
+    <circle cx="950" cy="132" r="8" fill="#FF9B71"/>
+    <text x="970" y="140" fill="#7B4B37" font-size="22" font-weight="700" font-family="'Segoe UI', 'Trebuchet MS', Verdana, sans-serif">by baba01hacker</text>
+    <rect x="920" y="170" width="228" height="48" rx="24" fill="#EEF7FB" stroke="#A8D5E5"/>
+    <circle cx="950" cy="194" r="8" fill="#2E86AB"/>
+    <text x="970" y="202" fill="#24506A" font-size="22" font-weight="700" font-family="'Segoe UI', 'Trebuchet MS', Verdana, sans-serif">Doraemon cyber team</text>
+  </g>
+</svg>
