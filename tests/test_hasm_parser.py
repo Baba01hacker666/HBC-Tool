@@ -38,3 +38,31 @@ EndFunction
 
     with pytest.raises(HASMError, match="Invalid operand value"):
         parse_hasm_functions(content, _StubHBC(1))
+
+
+def test_parse_hasm_functions_accepts_out_of_order_blocks():
+    content = """Function<bar>1(0 params, 1 registers, 0 symbols):
+	Ret                  Reg8:0
+EndFunction
+Function<foo>0(0 params, 1 registers, 0 symbols):
+	Ret                  Reg8:0
+EndFunction
+"""
+
+    parsed = parse_hasm_functions(content, _StubHBC(2))
+
+    assert parsed[0][0] == "foo"
+    assert parsed[1][0] == "bar"
+
+
+def test_parse_hasm_functions_rejects_duplicate_function_blocks():
+    content = """Function<foo>0(0 params, 1 registers, 0 symbols):
+	Ret                  Reg8:0
+EndFunction
+Function<foo-again>0(0 params, 1 registers, 0 symbols):
+	Ret                  Reg8:0
+EndFunction
+"""
+
+    with pytest.raises(HASMError, match="Duplicate function block"):
+        parse_hasm_functions(content, _StubHBC(1))

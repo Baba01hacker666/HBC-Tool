@@ -62,7 +62,7 @@ class HBC83:
 
         return functionNameStr, paramCount, registerCount, symbolCount, insts, functionHeader
     
-    def setFunction(self, fid, func, disasm=True, offset_shift=0):
+    def setFunction(self, fid, func, disasm=True, offset_shift=0, string_id_cache=None):
         assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"
 
         functionName, paramCount, registerCount, symbolCount, insts, _ = func
@@ -73,7 +73,7 @@ class HBC83:
         functionHeader["frameSize"] = registerCount
         functionHeader["environmentSize"] = symbolCount
 
-        functionHeader["functionName"] = self.getStringId(functionName)
+        functionHeader["functionName"] = self.getStringId(functionName, string_id_cache=string_id_cache)
 
         offset = functionHeader["offset"]
         bytecodeSizeInBytes = functionHeader["bytecodeSizeInBytes"]
@@ -141,12 +141,18 @@ class HBC83:
             self._shift_function_offsets(delta)
 
         return offset
-    def getStringId(self, string_value):
+    def getStringId(self, string_value, string_id_cache=None):
         from .parser import INVALID_LENGTH
         count = self.getStringCount()
+        if string_id_cache is not None:
+            sid = string_id_cache.get(string_value)
+            if sid is not None:
+                return sid
         for i in range(count):
             s, _ = self.getString(i)
             if s == string_value:
+                if string_id_cache is not None:
+                    string_id_cache[string_value] = i
                 return i
 
         isUTF16 = 0
@@ -175,6 +181,9 @@ class HBC83:
         stringStorage = self.getObj()["stringStorage"]
         from hbctool.util import memcpy
         memcpy(stringStorage, s, offset, len(s))
+
+        if string_id_cache is not None:
+            string_id_cache[string_value] = count
 
         return count
 

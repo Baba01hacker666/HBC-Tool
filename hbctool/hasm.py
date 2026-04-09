@@ -4,7 +4,6 @@ import json
 import os
 import shutil
 import re
-from types import MethodType
 
 class HASMError(ValueError):
     pass
@@ -256,27 +255,12 @@ def parse_hasm_functions(hasm_content, hbc):
     return results
 
 
-def _install_cached_string_id_lookup(hbc):
-    original_get_string_id = hbc.getStringId
-    string_id_cache = None
-
-    def cached_get_string_id(self, string_value):
-        nonlocal string_id_cache
-        if string_id_cache is None:
-            string_id_cache = {}
-            for sid in range(self.getStringCount()):
-                value, _ = self.getString(sid)
-                string_id_cache.setdefault(value, sid)
-
-        sid = string_id_cache.get(string_value)
-        if sid is not None:
-            return sid
-
-        sid = original_get_string_id(string_value)
-        string_id_cache[string_value] = sid
-        return sid
-
-    hbc.getStringId = MethodType(cached_get_string_id, hbc)
+def _build_string_id_cache(hbc):
+    string_id_cache = {}
+    for sid in range(hbc.getStringCount()):
+        value, _ = hbc.getString(sid)
+        string_id_cache.setdefault(value, sid)
+    return string_id_cache
 
 
 def load(path):
@@ -301,8 +285,8 @@ def load(path):
             hbc.setString(string["id"], string["value"])
 
     # Large bundles can reference the same function-name strings tens of thousands
-    # of times. Cache lookups during this load so rebuilding functions stays linear.
-    _install_cached_string_id_lookup(hbc)
+    # of times. Build a reusable lookup once so rebuilding functions stays linear.
+    string_id_cache = _build_string_id_cache(hbc)
 
     offset_shift = 0
     next_fid = 0
@@ -311,7 +295,7 @@ def load(path):
         for fid, func in _iter_hasm_functions(f, hbc):
             pending[fid] = func
             while next_fid in pending:
-                delta = hbc.setFunction(next_fid, pending.pop(next_fid), offset_shift=offset_shift)
+                delta = hbc.setFunction(next_fid, pending.pop(next_fid), offset_shift=offset_shift, string_id_cache=string_id_cache)
                 offset_shift += delta
                 next_fid += 1
 
