@@ -31,6 +31,36 @@ static int get_u8(PyObject* obj, Py_ssize_t idx, uint8_t* out) {
     return 0;
 }
 
+static Py_ssize_t get_buffer_length(PyObject* obj) {
+    if (PyBytes_Check(obj)) return PyBytes_GET_SIZE(obj);
+    if (PyByteArray_Check(obj)) return PyByteArray_GET_SIZE(obj);
+    return PySequence_Size(obj);
+}
+
+static int read_bytes(PyObject* obj, Py_ssize_t offset, uint8_t* out, Py_ssize_t count) {
+    Py_ssize_t size = get_buffer_length(obj);
+    if (size < 0) return -1;
+    if (offset < 0 || count < 0 || offset > size || count > size - offset) {
+        PyErr_SetString(PyExc_IndexError, "operand read out of range");
+        return -1;
+    }
+
+    if (PyBytes_Check(obj)) {
+        memcpy(out, PyBytes_AS_STRING(obj) + offset, (size_t)count);
+        return 0;
+    }
+
+    if (PyByteArray_Check(obj)) {
+        memcpy(out, PyByteArray_AS_STRING(obj) + offset, (size_t)count);
+        return 0;
+    }
+
+    for (Py_ssize_t i = 0; i < count; ++i) {
+        if (get_u8(obj, offset + i, &out[i]) != 0) return -1;
+    }
+    return 0;
+}
+
 static int operand_size(const char* oper_t) {
     if (strcmp(oper_t, "Reg8") == 0 || strcmp(oper_t, "UInt8") == 0 || strcmp(oper_t, "Addr8") == 0) return 1;
     if (strcmp(oper_t, "UInt16") == 0) return 2;
@@ -47,11 +77,9 @@ static PyObject* parse_operand_value(const char* oper_t, PyObject* bc, Py_ssize_
     }
 
     uint8_t b[8] = {0};
-    for (int i = 0; i < sz; ++i) {
-        if (get_u8(bc, offset + i, &b[i]) != 0) {
-            if (!PyErr_Occurred()) PyErr_SetString(PyExc_IndexError, "operand read out of range");
-            return nullptr;
-        }
+    if (read_bytes(bc, offset, b, sz) != 0) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_IndexError, "operand read out of range");
+        return nullptr;
     }
 
     if (strcmp(oper_t, "Double") == 0) {

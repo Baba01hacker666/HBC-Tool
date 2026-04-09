@@ -31,6 +31,19 @@ import sys
 DEFAULT_HASM_PATH = "hasm"
 DEFAULT_HBC_FILE = "index.android.bundle"
 
+def _confirm_overwrite(path):
+    if not os.path.exists(path):
+        return False
+
+    if os.path.abspath(path) in ("/", os.path.expanduser("~")):
+        raise hasm.HASMError(f"Refusing to remove unsafe output directory: {path}")
+
+    c = input(f"'{path}' exists. Do you want to remove it ? (y/n): ").lower().strip()
+    if c[:1] != "y":
+        raise FileExistsError(f"Output directory already exists: {path}")
+
+    return True
+
 def disasm(hbcfile, hasmpath):
     if not os.path.isfile(hbcfile):
         raise FileNotFoundError(f"HBC file not found: {hbcfile}")
@@ -45,7 +58,8 @@ def disasm(hbcfile, hasmpath):
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
 
-    hasm.dump(hbco, hasmpath)
+    overwrite = _confirm_overwrite(hasmpath)
+    hasm.dump(hbco, hasmpath, force=overwrite)
     print(f"[*] Done")
 
 def asm(hasmpath, hbcfile):
@@ -70,7 +84,7 @@ def main():
             disasm(args['<HBC_FILE>'], args['<HASM_PATH>'] or DEFAULT_HASM_PATH)
         elif args['asm']:
             asm(args['<HASM_PATH>'] or DEFAULT_HASM_PATH, args['<HBC_FILE>'] or DEFAULT_HBC_FILE)
-    except (FileNotFoundError, hasm.HASMError, ValueError) as exc:
+    except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
         print(f"[!] {exc}", file=sys.stderr)
         raise SystemExit(1)
     

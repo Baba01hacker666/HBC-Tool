@@ -4,7 +4,7 @@ import json
 import os
 import shutil
 import re
-import io
+from types import MethodType
 
 class HASMError(ValueError):
     pass
@@ -53,16 +53,11 @@ def _write_json_file(path, obj, indent=None):
         json.dump(obj, f, indent=indent)
 
 def dump(hbc, path, force=False):
-    
     if os.path.exists(path) and not force:
         if os.path.abspath(path) in ("/", os.path.expanduser("~")):
             raise HASMError(f"Refusing to remove unsafe output directory: {path}")
-        c = input(f"'{path}' exists. Do you want to remove it ? (y/n): ").lower().strip()
-        if c[:1] == "y":
-            shutil.rmtree(path)
-        else:
-            exit(1337)
-    
+        raise FileExistsError(f"Output directory already exists: {path}")
+
     shutil.rmtree(path, ignore_errors=True)
     os.makedirs(path)
     # Write all obj to metadata.json
@@ -82,12 +77,9 @@ def dump(hbc, path, force=False):
     
     _write_json_file(os.path.join(path, "string.json"), ss, indent=4)
 
-    instruction_buf = io.StringIO()
-    for i in range(functionCount):
-        write_func(instruction_buf, hbc.getFunction(i), i, hbc)
-
     with open(os.path.join(path, "instruction.hasm"), "w") as f:
-        f.write(instruction_buf.getvalue())
+        for i in range(functionCount):
+            write_func(f, hbc.getFunction(i), i, hbc)
 
 def read_all_func(hasm, hbc):
     functionCount = hbc.getFunctionCount()
@@ -168,80 +160,123 @@ def _strip_inline_comment(line):
     return line.split(";", 1)[0].rstrip()
 
 
+def _parse_instruction_line(line, fid):
+    if "	" in line:
+        parts = [p for p in line.split("	") if p]
+        opcode = parts[0].strip()
+        operands_text = parts[1].strip() if len(parts) > 1 else ""
+    else:
+        sp = line.split(None, 1)
+        opcode = sp[0]
+        operands_text = sp[1] if len(sp) > 1 else ""
+
+    operands = []
+    if operands_text:
+        for oper in operands_text.split(","):
+            item = oper.strip()
+            if not item:
+                continue
+            if ":" not in item:
+                raise HASMError(f"Malformed operand '{item}' in function {fid}.")
+            oper_t, val = item.split(":", 1)
+            try:
+                parsed_val = float(val) if oper_t == "Double" else int(val)
+            except ValueError as exc:
+                raise HASMError(f"Invalid operand value '{val}' ({oper_t}) in function {fid}.") from exc
+            operands.append((oper_t, False, parsed_val))
+
+    return opcode, operands
+
+
+def _iter_hasm_functions(lines, hbc):
+    function_count = hbc.getFunctionCount()
+    seen = [False] * function_count
+    current = None
+
+    for raw_line in lines:
+        line = _strip_inline_comment(raw_line.strip())
+
+        if current is None:
+            if not line:
+                continue
+
+            m = FUNCTION_LINE_RE.match(line)
+            if not m:
+                continue
+
+            fid = int(m.group(2))
+            if fid < 0 or fid >= function_count:
+                raise HASMError(f"Invalid function ID {fid}; expected in range [0, {function_count}).")
+            if seen[fid]:
+                raise HASMError(f"Duplicate function block for function {fid}.")
+
+            current = {
+                "fid": fid,
+                "function_name": m.group(1),
+                "param_count": int(m.group(3)),
+                "register_count": int(m.group(4)),
+                "symbol_count": int(m.group(5)),
+                "insts": [],
+            }
+            continue
+
+        if line == "EndFunction":
+            fid = current["fid"]
+            seen[fid] = True
+            yield fid, (
+                current["function_name"],
+                current["param_count"],
+                current["register_count"],
+                current["symbol_count"],
+                current["insts"],
+                None,
+            )
+            current = None
+            continue
+
+        if not line or line.startswith(";"):
+            continue
+
+        current["insts"].append(_parse_instruction_line(line, current["fid"]))
+
+    if current is not None:
+        raise HASMError(f"Malformed function block for function {current['fid']}.")
+
+    if any(not parsed for parsed in seen):
+        raise HASMError("Malformed HASM: missing function blocks.")
+
+
 def parse_hasm_functions(hasm_content, hbc):
     function_count = hbc.getFunctionCount()
     results = [None] * function_count
 
-    lines = hasm_content.splitlines()
-    i = 0
-    while i < len(lines):
-        line = _strip_inline_comment(lines[i].strip())
-        if not line:
-            i += 1
-            continue
-
-        m = FUNCTION_LINE_RE.match(line)
-        if not m:
-            i += 1
-            continue
-
-        function_name = m.group(1)
-        fid = int(m.group(2))
-        param_count = int(m.group(3))
-        register_count = int(m.group(4))
-        symbol_count = int(m.group(5))
-
-        if fid < 0 or fid >= function_count:
-            raise HASMError(f"Invalid function ID {fid}; expected in range [0, {function_count}).")
-
-        i += 1
-        insts = []
-        while i < len(lines):
-            cur = _strip_inline_comment(lines[i].strip())
-            if cur == "EndFunction":
-                break
-
-            if not cur or cur.startswith(";"):
-                i += 1
-                continue
-
-            if "\t" in cur:
-                parts = [p for p in cur.split("\t") if p]
-                opcode = parts[0].strip()
-                operands_text = parts[1].strip() if len(parts) > 1 else ""
-            else:
-                sp = cur.split(None, 1)
-                opcode = sp[0]
-                operands_text = sp[1] if len(sp) > 1 else ""
-
-            operands = []
-            if operands_text:
-                for oper in operands_text.split(","):
-                    item = oper.strip()
-                    if not item:
-                        continue
-                    if ":" not in item:
-                        raise HASMError(f"Malformed operand '{item}' in function {fid}.")
-                    oper_t, val = item.split(":", 1)
-                    try:
-                        parsed_val = float(val) if oper_t == "Double" else int(val)
-                    except ValueError as exc:
-                        raise HASMError(f"Invalid operand value '{val}' ({oper_t}) in function {fid}.") from exc
-                    operands.append((oper_t, False, parsed_val))
-
-            insts.append((opcode, operands))
-            i += 1
-
-        if i >= len(lines) or _strip_inline_comment(lines[i].strip()) != "EndFunction":
-            raise HASMError(f"Malformed function block for function {fid}.")
-
-        results[fid] = (function_name, param_count, register_count, symbol_count, insts, None)
-        i += 1
-
-    if any(v is None for v in results):
-        raise HASMError("Malformed HASM: missing function blocks.")
+    for fid, func in _iter_hasm_functions(hasm_content.splitlines(), hbc):
+        results[fid] = func
 
     return results
+
+
+def _install_cached_string_id_lookup(hbc):
+    original_get_string_id = hbc.getStringId
+    string_id_cache = None
+
+    def cached_get_string_id(self, string_value):
+        nonlocal string_id_cache
+        if string_id_cache is None:
+            string_id_cache = {}
+            for sid in range(self.getStringCount()):
+                value, _ = self.getString(sid)
+                string_id_cache.setdefault(value, sid)
+
+        sid = string_id_cache.get(string_value)
+        if sid is not None:
+            return sid
+
+        sid = original_get_string_id(string_value)
+        string_id_cache[string_value] = sid
+        return sid
+
+    hbc.getStringId = MethodType(cached_get_string_id, hbc)
 
 
 def load(path):
@@ -257,22 +292,32 @@ def load(path):
     with open(os.path.join(path, "metadata.json"), "r") as f:
         hbc = hbcl.loado(json.load(f))
 
-    with open(os.path.join(path, "instruction.hasm"), "r") as f:
-        hasm_content = f.read()
-
     with open(os.path.join(path, "string.json"), "r") as f:
         strings = json.load(f)
 
     for string in strings:
-        hbc.setString(string["id"], string["value"])
-  
-    funcs = parse_hasm_functions(hasm_content, hbc)
+        current_value, _ = hbc.getString(string["id"])
+        if current_value != string["value"]:
+            hbc.setString(string["id"], string["value"])
+
+    # Large bundles can reference the same function-name strings tens of thousands
+    # of times. Cache lookups during this load so rebuilding functions stays linear.
+    _install_cached_string_id_lookup(hbc)
+
     offset_shift = 0
-    for i, func in enumerate(funcs):
-        delta = hbc.setFunction(i, func, offset_shift=offset_shift)
-        offset_shift += delta
+    next_fid = 0
+    pending = {}
+    with open(os.path.join(path, "instruction.hasm"), "r") as f:
+        for fid, func in _iter_hasm_functions(f, hbc):
+            pending[fid] = func
+            while next_fid in pending:
+                delta = hbc.setFunction(next_fid, pending.pop(next_fid), offset_shift=offset_shift)
+                offset_shift += delta
+                next_fid += 1
+
+    if next_fid != hbc.getFunctionCount():
+        raise HASMError("Malformed HASM: missing function blocks.")
 
     hbc._rebuild_function_offsets()
 
-        
     return hbc

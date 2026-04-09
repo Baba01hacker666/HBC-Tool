@@ -53,3 +53,13 @@ def test_load_instruction_missing(tmp_path):
     (d / "string.json").touch()
     with pytest.raises(FileNotFoundError, match="instruction.hasm not found"):
         hasm.load(str(d))
+
+
+def test_dump_existing_directory_requires_force(tmp_path):
+    source = hbc.load(FIXTURE_BUNDLE.open("rb"))
+
+    out_dir = tmp_path / "hasm"
+    out_dir.mkdir()
+
+    with pytest.raises(FileExistsError, match="Output directory already exists"):
+        hasm.dump(source, str(out_dir))
