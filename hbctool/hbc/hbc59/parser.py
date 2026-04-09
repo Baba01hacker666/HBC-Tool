@@ -11,7 +11,8 @@ BYTECODE_ALIGNMENT = 4
 INVALID_OFFSET = (1 << 23)
 INVALID_LENGTH = (1 << 8) - 1
 
-structure = json.load(open(basepath / "data" / "structure.json", "r"))
+with open(basepath / "data" / "structure.json", "r") as f:
+    structure = json.load(f)
 
 headerS = structure["header"]
 smallFunctionHeaderS = structure["SmallFuncHeader"]
