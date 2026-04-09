@@ -24,7 +24,7 @@ hbc_package_data = {
 }
 
 setup(
-    name="hbctool",
+    name="hbctool-cli",
     version="0.1.6",
     description="A command-line interface for disassembling and assembling the Hermes Bytecode.",
     long_description=open("README.md", encoding="utf-8").read(),

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.x-yellow.svg" alt="Python 3.x"></a>
-  <a href="https://badge.fury.io/py/hbctool"><img src="https://badge.fury.io/py/hbctool.svg" alt="PyPI version"></a>
+  <a href="https://badge.fury.io/py/hbctool-cli"><img src="https://badge.fury.io/py/hbctool-cli.svg" alt="PyPI version"></a>
   <a href="/LICENSE"><img src="https://img.shields.io/badge/license-MIT-brightgreen.svg" alt="MIT License"></a>
 </p>
 
@@ -38,7 +38,7 @@ React Native apps can ship JavaScript through the Hermes engine, which compiles 
 ### Quick install
 
 ```bash
-python3 -m pip install hbctool
+python3 -m pip install hbctool-cli
 ```
 
 ### Local development install
