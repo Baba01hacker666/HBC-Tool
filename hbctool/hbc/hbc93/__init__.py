@@ -73,8 +73,7 @@ class HBC93:
         functionHeader["frameSize"] = registerCount
         functionHeader["environmentSize"] = symbolCount
 
-        # TODO : Make this work
-        # functionHeader["functionName"] = functionName
+        functionHeader["functionName"] = self.getStringId(functionName)
 
         offset = functionHeader["offset"]
         bytecodeSizeInBytes = functionHeader["bytecodeSizeInBytes"]
@@ -142,6 +141,43 @@ class HBC93:
             self._shift_function_offsets(delta)
 
         return offset
+    def getStringId(self, string_value):
+        from .parser import INVALID_LENGTH
+        count = self.getStringCount()
+        for i in range(count):
+            s, _ = self.getString(i)
+            if s == string_value:
+                return i
+
+        isUTF16 = 0
+        s = string_value.encode("utf-8")
+        l = len(s)
+
+        offset = self._allocate_string_slot(len(s))
+
+        stringTableEntry = {
+            "isUTF16": isUTF16,
+        }
+
+        stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
+        if l >= INVALID_LENGTH:
+            stringTableEntry["length"] = INVALID_LENGTH
+            stringTableEntry["offset"] = len(stringTableOverflowEntries)
+            stringTableOverflowEntries.append({"offset": offset, "length": l})
+            self.getObj()["header"]["overflowStringCount"] = len(stringTableOverflowEntries)
+        else:
+            stringTableEntry["length"] = l
+            stringTableEntry["offset"] = offset
+
+        self.getObj()["stringTableEntries"].append(stringTableEntry)
+        self.getObj()["header"]["stringCount"] += 1
+
+        stringStorage = self.getObj()["stringStorage"]
+        from hbctool.util import memcpy
+        memcpy(stringStorage, s, offset, len(s))
+
+        return count
+
 
     def getStringCount(self):
         return self.getObj()["header"]["stringCount"]
