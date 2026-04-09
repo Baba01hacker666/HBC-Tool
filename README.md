@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="image/hbctool-logo.svg" alt="hbctool logo" width="900">
+  <img src="https://raw.githubusercontent.com/Baba01hacker666/HBC-Tool/main/image/hbctool-logo.svg" alt="hbctool logo" width="900">
 </p>
 
 <p align="center">

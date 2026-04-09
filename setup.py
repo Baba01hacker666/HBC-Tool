@@ -30,7 +30,9 @@ setup(
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="baba01hacker",
+    author_email="117832562+Baba01hacker666@users.noreply.github.com",
     license="MIT",
+    license_files=["LICENSE"],
     url="https://github.com/Baba01hacker666/HBC-Tool",
     project_urls={
         "Homepage": "https://github.com/Baba01hacker666/HBC-Tool",
@@ -40,6 +42,7 @@ setup(
     packages=packages,
     package_data=hbc_package_data,
     include_package_data=True,
+    keywords=["hbc", "hermes", "bytecode", "reverse", "hacking"],
     install_requires=["docopt>=0.6.2,<0.7.0"],
     entry_points={"console_scripts": ["hbctool=hbctool:main"]},
     python_requires=">=3.6",
@@ -47,7 +50,6 @@ setup(
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Natural Language :: English",
-        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
