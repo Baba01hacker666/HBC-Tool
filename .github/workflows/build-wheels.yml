@@ -68,3 +68,41 @@ jobs:
         with:
           name: dist-wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs:
+      - sdist
+      - wheels
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download sdist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-sdist
+          path: dist
+
+      - name: Download Linux wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-wheels-ubuntu-latest
+          path: dist
+
+      - name: Download macOS wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-wheels-macos-latest
+          path: dist
+
+      - name: Download Windows wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-wheels-windows-latest
+          path: dist
+
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
