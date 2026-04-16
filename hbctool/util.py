@@ -281,18 +281,17 @@ def read(f, format):
     type = format[0]
     bits = format[1]
     n = format[2]
-    r = []
-    for i in range(n):
-        if type == "uint":
-            r.append(readuint(f, bits=bits))
-        elif type == "int":
-            r.append(readint(f, bits=bits))
-        elif type == "bit":
-            r.append(readbits(f, bits=bits))
-        else:
-            raise Exception(f"Data type {type} is not supported.")
-    
-    if len(r) == 1:
+
+    if type == "uint":
+        r = [readuint(f, bits=bits) for _ in range(n)]
+    elif type == "int":
+        r = [readint(f, bits=bits) for _ in range(n)]
+    elif type == "bit":
+        r = [readbits(f, bits=bits) for _ in range(n)]
+    else:
+        raise Exception(f"Data type {type} is not supported.")
+
+    if n == 1:
         return r[0]
     else:
         return r
@@ -355,15 +354,17 @@ def write(f, v, format):
     if not isinstance(v, list):
         v = [v]
 
-    for i in range(n):
-        if t == "uint":
+    if t == "uint":
+        for i in range(n):
             writeuint(f, v[i], bits=bits)
-        elif t == "int":
+    elif t == "int":
+        for i in range(n):
             writeint(f, v[i], bits=bits)
-        elif t == "bit":
+    elif t == "bit":
+        for i in range(n):
             writebits(f, v[i], bits=bits)
-        else:
-            raise Exception(f"Data type {t} is not supported.")
+    else:
+        raise Exception(f"Data type {t} is not supported.")
     
 # Unpacking
 def to_uint8(buf):
