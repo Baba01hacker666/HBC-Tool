@@ -1,7 +1,7 @@
-from hbctool.util import *
+from hbctool.util import memcpy
 from .parser import parse, export, INVALID_LENGTH
 from .translator import disassemble, assemble
-from struct import pack, unpack
+from struct import unpack
 
 NullTag = 0
 TrueTag = 1 << 4
@@ -142,7 +142,6 @@ class HBC95:
 
         return offset
     def getStringId(self, string_value, string_id_cache=None):
-        from .parser import INVALID_LENGTH
         count = self.getStringCount()
         if string_id_cache is not None:
             sid = string_id_cache.get(string_value)
@@ -179,7 +178,6 @@ class HBC95:
         self.getObj()["header"]["stringCount"] += 1
 
         stringStorage = self.getObj()["stringStorage"]
-        from hbctool.util import memcpy
         memcpy(stringStorage, s, offset, len(s))
 
         if string_id_cache is not None:
