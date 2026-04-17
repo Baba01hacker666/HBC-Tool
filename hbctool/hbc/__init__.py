@@ -21,6 +21,7 @@ from hbctool.hbc.hbc59 import HBC59
 import json
 
 MAGIC = 2240826417119764422
+PLAIN_JS_PREFIX_MAGIC = int.from_bytes(b"var __BU", "little")
 INIT_HEADER = {
     "magic": ["uint", 64, 1],
     "version": ["uint", 32, 1]
@@ -54,6 +55,11 @@ def load(f):
     version = read(f, INIT_HEADER["version"])
     f.seek(0)
     if magic != MAGIC:
+        if magic == PLAIN_JS_PREFIX_MAGIC:
+            raise ValueError(
+                "The input appears to be a plain JavaScript Metro bundle, not Hermes bytecode. "
+                "Enable Hermes when building the app and use the generated Hermes bytecode bundle."
+            )
         raise ValueError(f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})")
     if version not in HBC:
         raise ValueError(f"The HBC version ({version}) is not supported.")
@@ -65,6 +71,11 @@ def loado(obj):
     version = obj["header"]["version"]
 
     if magic != MAGIC:
+        if magic == PLAIN_JS_PREFIX_MAGIC:
+            raise ValueError(
+                "The input appears to be a plain JavaScript Metro bundle, not Hermes bytecode. "
+                "Enable Hermes when building the app and use the generated Hermes bytecode bundle."
+            )
         raise ValueError(f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})")
     if version not in HBC:
         raise ValueError(f"The HBC version ({version}) is not supported.")
