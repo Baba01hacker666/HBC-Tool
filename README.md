@@ -47,7 +47,10 @@ python3 -m pip install hbctool-cli
 python3 -m pip install --upgrade pip setuptools wheel
 python3 -m pip install -e .
 ```
-
+## PIPX INSTALL 
+```bash
+pipx install git+https://github.com/Baba01hacker666/HBC-Tool.git
+```
 ### Build the optional native extension
 
 ```bash
