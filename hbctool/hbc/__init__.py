@@ -47,7 +47,63 @@ def _get_hbc_class(version):
     hbc_class_name = f"HBC{version}"
     hbc_class = getattr(module, hbc_class_name)
     _HBC_CLASS_CACHE[version] = hbc_class
+    globals()[hbc_class_name] = hbc_class
     return hbc_class
+
+
+class _LazyHBCMap(dict):
+    def __init__(self, modules):
+        super().__init__({version: None for version in modules})
+        self._modules = modules
+
+    def __getitem__(self, version):
+        if version not in self._modules:
+            raise KeyError(version)
+        hbc_class = dict.get(self, version)
+        if hbc_class is None:
+            hbc_class = _get_hbc_class(version)
+            dict.__setitem__(self, version, hbc_class)
+        return hbc_class
+
+    def get(self, version, default=None):
+        try:
+            return self[version]
+        except KeyError:
+            return default
+
+    def items(self):
+        for version in self.keys():
+            yield version, self[version]
+
+    def values(self):
+        for version in self.keys():
+            yield self[version]
+
+
+HBC = _LazyHBCMap(_HBC_MODULES)
+
+
+def __getattr__(name):
+    if name.startswith("HBC") and name[3:].isdigit():
+        version = int(name[3:])
+        hbc_class = _get_hbc_class(version)
+        if hbc_class is None:
+            raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        return hbc_class
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+__all__ = [
+    "MAGIC",
+    "PLAIN_JS_PREFIX_MAGIC",
+    "INIT_HEADER",
+    "BYTECODE_ALIGNMENT",
+    "HBC",
+    "load",
+    "loado",
+    "dump",
+    "dumpo",
+] + [f"HBC{version}" for version in sorted(_HBC_MODULES)]
 
 def load(f):
     f = BitReader(f)
