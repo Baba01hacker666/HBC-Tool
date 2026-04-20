@@ -1,24 +1,7 @@
 
+import importlib
+
 from hbctool.util import *
-from hbctool.hbc.hbc96 import HBC96
-from hbctool.hbc.hbc95 import HBC95
-from hbctool.hbc.hbc94 import HBC94
-from hbctool.hbc.hbc93 import HBC93
-from hbctool.hbc.hbc92 import HBC92
-from hbctool.hbc.hbc91 import HBC91
-from hbctool.hbc.hbc90 import HBC90
-from hbctool.hbc.hbc89 import HBC89
-from hbctool.hbc.hbc88 import HBC88
-from hbctool.hbc.hbc87 import HBC87
-from hbctool.hbc.hbc86 import HBC86
-from hbctool.hbc.hbc85 import HBC85
-from hbctool.hbc.hbc84 import HBC84
-from hbctool.hbc.hbc83 import HBC83
-from hbctool.hbc.hbc76 import HBC76
-from hbctool.hbc.hbc74 import HBC74
-from hbctool.hbc.hbc62 import HBC62
-from hbctool.hbc.hbc59 import HBC59
-import json
 
 MAGIC = 2240826417119764422
 PLAIN_JS_PREFIX_MAGIC = int.from_bytes(b"var __BU", "little")
@@ -28,26 +11,99 @@ INIT_HEADER = {
 }
 BYTECODE_ALIGNMENT = 4
 
-HBC = {
-    96: HBC96,
-    95: HBC95,
-    94: HBC94,
-    93: HBC93,
-    92: HBC92,
-    91: HBC91,
-    90: HBC90,
-    89: HBC89,
-    88: HBC88,
-    87: HBC87,
-    86: HBC86,
-    85: HBC85,
-    84: HBC84,
-    83: HBC83,
-    76: HBC76,
-    74: HBC74,
-    62: HBC62,
-    59: HBC59
+_HBC_MODULES = {
+    96: "hbctool.hbc.hbc96",
+    95: "hbctool.hbc.hbc95",
+    94: "hbctool.hbc.hbc94",
+    93: "hbctool.hbc.hbc93",
+    92: "hbctool.hbc.hbc92",
+    91: "hbctool.hbc.hbc91",
+    90: "hbctool.hbc.hbc90",
+    89: "hbctool.hbc.hbc89",
+    88: "hbctool.hbc.hbc88",
+    87: "hbctool.hbc.hbc87",
+    86: "hbctool.hbc.hbc86",
+    85: "hbctool.hbc.hbc85",
+    84: "hbctool.hbc.hbc84",
+    83: "hbctool.hbc.hbc83",
+    76: "hbctool.hbc.hbc76",
+    74: "hbctool.hbc.hbc74",
+    62: "hbctool.hbc.hbc62",
+    59: "hbctool.hbc.hbc59",
 }
+_HBC_CLASS_CACHE = {}
+
+
+def _get_hbc_class(version):
+    hbc_class = _HBC_CLASS_CACHE.get(version)
+    if hbc_class is not None:
+        return hbc_class
+
+    module_name = _HBC_MODULES.get(version)
+    if module_name is None:
+        return None
+
+    module = importlib.import_module(module_name)
+    hbc_class_name = f"HBC{version}"
+    hbc_class = getattr(module, hbc_class_name)
+    _HBC_CLASS_CACHE[version] = hbc_class
+    globals()[hbc_class_name] = hbc_class
+    return hbc_class
+
+
+class _LazyHBCMap(dict):
+    def __init__(self, modules):
+        super().__init__({version: None for version in modules})
+        self._modules = modules
+
+    def __getitem__(self, version):
+        if version not in self._modules:
+            raise KeyError(version)
+        hbc_class = dict.get(self, version)
+        if hbc_class is None:
+            hbc_class = _get_hbc_class(version)
+            dict.__setitem__(self, version, hbc_class)
+        return hbc_class
+
+    def get(self, version, default=None):
+        try:
+            return self[version]
+        except KeyError:
+            return default
+
+    def items(self):
+        for version in self.keys():
+            yield version, self[version]
+
+    def values(self):
+        for version in self.keys():
+            yield self[version]
+
+
+HBC = _LazyHBCMap(_HBC_MODULES)
+
+
+def __getattr__(name):
+    if name.startswith("HBC") and name[3:].isdigit():
+        version = int(name[3:])
+        hbc_class = _get_hbc_class(version)
+        if hbc_class is None:
+            raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+        return hbc_class
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+__all__ = [
+    "MAGIC",
+    "PLAIN_JS_PREFIX_MAGIC",
+    "INIT_HEADER",
+    "BYTECODE_ALIGNMENT",
+    "HBC",
+    "load",
+    "loado",
+    "dump",
+    "dumpo",
+] + [f"HBC{version}" for version in sorted(_HBC_MODULES)]
 
 def load(f):
     f = BitReader(f)
@@ -61,10 +117,11 @@ def load(f):
                 "Enable Hermes when building the app and use the generated Hermes bytecode bundle."
             )
         raise ValueError(f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})")
-    if version not in HBC:
+    hbc_class = _get_hbc_class(version)
+    if hbc_class is None:
         raise ValueError(f"The HBC version ({version}) is not supported.")
 
-    return HBC[version](f)
+    return hbc_class(f)
 
 def loado(obj):
     magic = obj["header"]["magic"]
@@ -77,10 +134,11 @@ def loado(obj):
                 "Enable Hermes when building the app and use the generated Hermes bytecode bundle."
             )
         raise ValueError(f"The magic ({hex(magic)}) is invalid. (must be {hex(MAGIC)})")
-    if version not in HBC:
+    hbc_class = _get_hbc_class(version)
+    if hbc_class is None:
         raise ValueError(f"The HBC version ({version}) is not supported.")
 
-    hbc = HBC[version]()
+    hbc = hbc_class()
     hbc.setObj(obj)
     return hbc
 
