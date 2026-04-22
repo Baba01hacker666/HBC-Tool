@@ -3,14 +3,14 @@ A command-line interface for disassembling and assembling
 the Hermes Bytecode.
 
 Usage:
-    hbctool disasm <HBC_FILE> [<HASM_PATH>]
-    hbctool asm [<HASM_PATH>] [<HBC_FILE>]
+    hbctool (disasm|d) <HBC_FILE> [<HASM_PATH>]
+    hbctool (asm|a) [<HASM_PATH>] [<HBC_FILE>]
     hbctool --help
     hbctool --version
 
 Operation:
-    disasm              Disassemble Hermes Bytecode
-    asm                 Assemble Hermes Bytecode
+    disasm, d           Disassemble Hermes Bytecode
+    asm, a              Assemble Hermes Bytecode
 
 Args:
     HBC_FILE            Target HBC file
@@ -23,6 +23,8 @@ Options:
 Examples:
     hbctool disasm index.android.bundle test_hasm
     hbctool asm test_hasm index.android.bundle
+    hbctool d index.android.bundle test_hasm
+    hbctool a test_hasm index.android.bundle
 """
 from hbctool import metadata, hbc, hasm
 import os
@@ -80,9 +82,9 @@ def main():
     from docopt import docopt
     args = docopt(__doc__, version=f"{metadata.project} {metadata.version}")
     try:
-        if args['disasm']:
+        if args['disasm'] or args['d']:
             disasm(args['<HBC_FILE>'], args['<HASM_PATH>'] or DEFAULT_HASM_PATH)
-        elif args['asm']:
+        elif args['asm'] or args['a']:
             asm(args['<HASM_PATH>'] or DEFAULT_HASM_PATH, args['<HBC_FILE>'] or DEFAULT_HBC_FILE)
     except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
         print(f"[!] {exc}", file=sys.stderr)
