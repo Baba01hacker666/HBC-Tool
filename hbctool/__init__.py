@@ -51,9 +51,8 @@ def disasm(hbcfile, hasmpath):
         raise FileNotFoundError(f"HBC file not found: {hbcfile}")
 
     print(f"[*] Disassemble '{hbcfile}' to '{hasmpath}' path")
-    f = open(hbcfile, "rb")
-    hbco = hbc.load(f)
-    f.close()
+    with open(hbcfile, "rb") as f:
+        hbco = hbc.load(f)
 
     header = hbco.getHeader()
     sourceHash = bytes(header["sourceHash"]).hex()
@@ -73,9 +72,8 @@ def asm(hasmpath, hbcfile):
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
 
-    f = open(hbcfile, "wb")
-    hbc.dump(hbco, f)
-    f.close()
+    with open(hbcfile, "wb") as f:
+        hbc.dump(hbco, f)
     print(f"[*] Done")
 
 def main():
