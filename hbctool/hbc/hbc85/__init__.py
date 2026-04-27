@@ -15,6 +15,7 @@ TagMask = 0x70
 
 class HBC85:
     def __init__(self, f=None):
+        self._string_id_cache = None
         if f:
             self.obj = parse(f)
         else:
@@ -29,6 +30,7 @@ class HBC85:
 
     def setObj(self, obj):
         self.obj = obj
+        self._string_id_cache = None
 
     def getVersion(self):
         return 85
@@ -144,17 +146,23 @@ class HBC85:
     def getStringId(self, string_value, string_id_cache=None):
         from .parser import INVALID_LENGTH
         count = self.getStringCount()
+
+        if self._string_id_cache is None:
+            self._string_id_cache = {}
+            for i in range(count):
+                s, _ = self.getString(i)
+                self._string_id_cache.setdefault(s, i)
+
+        sid = self._string_id_cache.get(string_value)
+        if sid is not None:
+            if string_id_cache is not None:
+                string_id_cache[string_value] = sid
+            return sid
+
         if string_id_cache is not None:
             sid = string_id_cache.get(string_value)
             if sid is not None:
                 return sid
-        for i in range(count):
-            s, _ = self.getString(i)
-            if s == string_value:
-                if string_id_cache is not None:
-                    string_id_cache[string_value] = i
-                return i
-
         isUTF16 = 0
         s = string_value.encode("utf-8")
         l = len(s)
@@ -184,6 +192,9 @@ class HBC85:
 
         if string_id_cache is not None:
             string_id_cache[string_value] = count
+
+        if self._string_id_cache is not None:
+            self._string_id_cache[string_value] = count
 
         return count
 
@@ -215,6 +226,8 @@ class HBC85:
     
     def setString(self, sid, val):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
+
+        self._string_id_cache = None
 
         stringTableEntry = self.getObj()["stringTableEntries"][sid]
         stringStorage = self.getObj()["stringStorage"]
