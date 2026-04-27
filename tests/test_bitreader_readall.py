@@ -1,5 +1,4 @@
 import io
-import pytest
 from hbctool.util import BitReader
 
 def test_readall_empty_stream():

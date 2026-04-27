@@ -21,7 +21,6 @@ operand_type = {
     "UInt32": (4, to_uint32, from_uint32),
     "Addr8": (1, to_int8, from_int8),
     "Addr32": (4, to_int32, from_int32),
-    "Reg32": (4, to_uint32, from_uint32),
     "Imm32": (4, to_uint32, from_uint32),
     "Double": (8, to_double, from_double)
 }
