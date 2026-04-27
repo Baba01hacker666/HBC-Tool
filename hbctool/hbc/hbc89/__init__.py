@@ -15,7 +15,8 @@ TagMask = 0x70
 
 class HBC89:
     def __init__(self, f=None):
-        self._string_id_cache = None
+        self._string_id_cache = {}
+        self._last_string_id_searched = -1
         if f:
             self.obj = parse(f)
         else:
@@ -30,7 +31,8 @@ class HBC89:
 
     def setObj(self, obj):
         self.obj = obj
-        self._string_id_cache = None
+        self._string_id_cache = {}
+        self._last_string_id_searched = -1
 
     def getVersion(self):
         return 89
@@ -147,12 +149,6 @@ class HBC89:
         from .parser import INVALID_LENGTH
         count = self.getStringCount()
 
-        if self._string_id_cache is None:
-            self._string_id_cache = {}
-            for i in range(count):
-                s, _ = self.getString(i)
-                self._string_id_cache.setdefault(s, i)
-
         sid = self._string_id_cache.get(string_value)
         if sid is not None:
             if string_id_cache is not None:
@@ -163,6 +159,20 @@ class HBC89:
             sid = string_id_cache.get(string_value)
             if sid is not None:
                 return sid
+
+        for i in range(self._last_string_id_searched + 1, count):
+            try:
+                s, _ = self.getString(i)
+                self._string_id_cache.setdefault(s, i)
+                self._last_string_id_searched = i
+                if s == string_value:
+                    if string_id_cache is not None:
+                        string_id_cache[string_value] = i
+                    return i
+            except UnicodeDecodeError:
+                self._last_string_id_searched = i
+                continue
+
         isUTF16 = 0
         s = string_value.encode("utf-8")
         l = len(s)
@@ -192,9 +202,7 @@ class HBC89:
 
         if string_id_cache is not None:
             string_id_cache[string_value] = count
-
-        if self._string_id_cache is not None:
-            self._string_id_cache[string_value] = count
+        self._string_id_cache[string_value] = count
 
         return count
 
@@ -227,7 +235,8 @@ class HBC89:
     def setString(self, sid, val):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
 
-        self._string_id_cache = None
+        self._string_id_cache = {}
+        self._last_string_id_searched = -1
 
         stringTableEntry = self.getObj()["stringTableEntries"][sid]
         stringStorage = self.getObj()["stringStorage"]
