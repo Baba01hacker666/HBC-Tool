@@ -155,11 +155,6 @@ class HBC83:
                 string_id_cache[string_value] = sid
             return sid
 
-        if string_id_cache is not None:
-            sid = string_id_cache.get(string_value)
-            if sid is not None:
-                return sid
-
         for i in range(self._last_string_id_searched + 1, count):
             try:
                 s, _ = self.getString(i)
@@ -172,6 +167,11 @@ class HBC83:
             except UnicodeDecodeError:
                 self._last_string_id_searched = i
                 continue
+
+        if string_id_cache is not None:
+            sid = string_id_cache.get(string_value)
+            if sid is not None:
+                return sid
 
         isUTF16 = 0
         s = string_value.encode("utf-8")
