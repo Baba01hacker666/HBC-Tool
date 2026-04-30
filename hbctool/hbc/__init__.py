@@ -1,14 +1,10 @@
-
 import importlib
 
 from hbctool.util import *
 
 MAGIC = 2240826417119764422
 PLAIN_JS_PREFIX_MAGIC = int.from_bytes(b"var __BU", "little")
-INIT_HEADER = {
-    "magic": ["uint", 64, 1],
-    "version": ["uint", 32, 1]
-}
+INIT_HEADER = {"magic": ["uint", 64, 1], "version": ["uint", 32, 1]}
 BYTECODE_ALIGNMENT = 4
 
 _HBC_MODULES = {
@@ -105,6 +101,7 @@ __all__ = [
     "dumpo",
 ] + [f"HBC{version}" for version in sorted(_HBC_MODULES)]
 
+
 def load(f):
     f = BitReader(f)
     magic = read(f, INIT_HEADER["magic"])
@@ -122,6 +119,7 @@ def load(f):
         raise ValueError(f"The HBC version ({version}) is not supported.")
 
     return hbc_class(f)
+
 
 def loado(obj):
     magic = obj["header"]["magic"]
@@ -142,9 +140,11 @@ def loado(obj):
     hbc.setObj(obj)
     return hbc
 
+
 def dump(hbc, f):
     f = BitWriter(f)
     hbc.export(f)
+
 
 def dumpo(hbc):
     return hbc.getObj()

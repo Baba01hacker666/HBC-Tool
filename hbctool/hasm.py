@@ -5,16 +5,18 @@ import os
 import shutil
 import re
 
+
 class HASMError(ValueError):
     pass
 
+
 FUNCTION_HEADER_RE = re.compile(
     r"^Function<.*?>([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):$",
-    re.MULTILINE
+    re.MULTILINE,
 )
 FUNCTION_BLOCK_RE = re.compile(
     r"Function<.*?>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
-    re.DOTALL
+    re.DOTALL,
 )
 FUNCTION_LINE_RE = re.compile(
     r"^Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):$"
@@ -23,7 +25,9 @@ FUNCTION_LINE_RE = re.compile(
 
 def write_func(f, func, i, hbc):
     functionName, paramCount, registerCount, symbolCount, insts, _ = func
-    f.write(f"Function<{functionName}>{i}({paramCount} params, {registerCount} registers, {symbolCount} symbols):\n")
+    f.write(
+        f"Function<{functionName}>{i}({paramCount} params, {registerCount} registers, {symbolCount} symbols):\n"
+    )
     for opcode, operands in insts:
         f.write(f"\t{opcode.ljust(20,' ')}\t")
         o = []
@@ -35,8 +39,7 @@ def write_func(f, func, i, hbc):
             if is_str:
                 s, _ = hbc.getString(val)
                 ss.append((ii, val, s))
-                
-        
+
         f.write(f"{', '.join(o)}\n")
         if len(ss) > 0:
             for ii, val, s in ss:
@@ -51,6 +54,7 @@ def _write_json_file(path, obj, indent=None):
     with open(path, "w") as f:
         json.dump(obj, f, indent=indent)
 
+
 def dump(hbc, path, force=False):
     if os.path.exists(path) and not force:
         if os.path.abspath(path) in ("/", os.path.expanduser("~")):
@@ -61,40 +65,39 @@ def dump(hbc, path, force=False):
     os.makedirs(path)
     # Write all obj to metadata.json
     _write_json_file(os.path.join(path, "metadata.json"), hbc.getObj())
-    
+
     stringCount = hbc.getStringCount()
     functionCount = hbc.getFunctionCount()
 
     ss = []
     for i in range(stringCount):
         val, header = hbc.getString(i)
-        ss.append({
-            "id": i,
-            "isUTF16": header[0] == 1,
-            "value": val
-        })
-    
+        ss.append({"id": i, "isUTF16": header[0] == 1, "value": val})
+
     _write_json_file(os.path.join(path, "string.json"), ss, indent=4)
 
     with open(os.path.join(path, "instruction.hasm"), "w") as f:
         for i in range(functionCount):
             write_func(f, hbc.getFunction(i), i, hbc)
 
+
 def read_all_func(hasm, hbc):
     functionCount = hbc.getFunctionCount()
-    rs = [''] * functionCount
+    rs = [""] * functionCount
 
     for m in FUNCTION_HEADER_RE.finditer(hasm):
         fid = int(m.group(1))
 
         if fid < 0 or fid >= functionCount:
-            raise HASMError(f"Invalid function ID {fid}; expected in range [0, {functionCount}).")
+            raise HASMError(
+                f"Invalid function ID {fid}; expected in range [0, {functionCount})."
+            )
 
         end_pos = hasm.find("\nEndFunction", m.start())
         if end_pos == -1:
             raise HASMError(f"Malformed function block for function {fid}.")
 
-        rs[fid] = hasm[m.start():end_pos + len("\nEndFunction")]
+        rs[fid] = hasm[m.start() : end_pos + len("\nEndFunction")]
 
     if any(not func_asm for func_asm in rs):
         raise HASMError("Malformed HASM: missing function blocks.")
@@ -137,21 +140,22 @@ def read_func(func_asms, i):
             if ":" not in cleaned:
                 raise HASMError(f"Malformed operand '{oper}' in function {i}.")
             oper_t, val = cleaned.split(":", 1)
-            
+
             try:
-                if oper_t == 'Double':
+                if oper_t == "Double":
                     val = float(val)
                 else:
                     val = int(val)
             except ValueError as exc:
-                raise HASMError(f"Invalid operand value '{val}' ({oper_t}) in function {i}.") from exc
-            
-            operands.append((oper_t, False, val))
-        
-        insts.append((opcode, operands))
-    
-    return functionName, paramCount, registerCount, symbolCount, insts, None
+                raise HASMError(
+                    f"Invalid operand value '{val}' ({oper_t}) in function {i}."
+                ) from exc
 
+            operands.append((oper_t, False, val))
+
+        insts.append((opcode, operands))
+
+    return functionName, paramCount, registerCount, symbolCount, insts, None
 
 
 def _strip_inline_comment(line):
@@ -181,7 +185,9 @@ def _parse_instruction_line(line, fid):
             try:
                 parsed_val = float(val) if oper_t == "Double" else int(val)
             except ValueError as exc:
-                raise HASMError(f"Invalid operand value '{val}' ({oper_t}) in function {fid}.") from exc
+                raise HASMError(
+                    f"Invalid operand value '{val}' ({oper_t}) in function {fid}."
+                ) from exc
             operands.append((oper_t, False, parsed_val))
 
     return opcode, operands
@@ -205,7 +211,9 @@ def _iter_hasm_functions(lines, hbc):
 
             fid = int(m.group(2))
             if fid < 0 or fid >= function_count:
-                raise HASMError(f"Invalid function ID {fid}; expected in range [0, {function_count}).")
+                raise HASMError(
+                    f"Invalid function ID {fid}; expected in range [0, {function_count})."
+                )
             if seen[fid]:
                 raise HASMError(f"Duplicate function block for function {fid}.")
 
@@ -222,13 +230,16 @@ def _iter_hasm_functions(lines, hbc):
         if line == "EndFunction":
             fid = current["fid"]
             seen[fid] = True
-            yield fid, (
-                current["function_name"],
-                current["param_count"],
-                current["register_count"],
-                current["symbol_count"],
-                current["insts"],
-                None,
+            yield (
+                fid,
+                (
+                    current["function_name"],
+                    current["param_count"],
+                    current["register_count"],
+                    current["symbol_count"],
+                    current["insts"],
+                    None,
+                ),
             )
             current = None
             continue
@@ -295,7 +306,12 @@ def load(path):
         for fid, func in _iter_hasm_functions(f, hbc):
             pending[fid] = func
             while next_fid in pending:
-                delta = hbc.setFunction(next_fid, pending.pop(next_fid), offset_shift=offset_shift, string_id_cache=string_id_cache)
+                delta = hbc.setFunction(
+                    next_fid,
+                    pending.pop(next_fid),
+                    offset_shift=offset_shift,
+                    string_id_cache=string_id_cache,
+                )
                 offset_shift += delta
                 next_fid += 1
 

@@ -5,11 +5,10 @@ from hbctool.hbc.hbc76.test import *
 from hbctool.hbc.hbc74.test import *
 from hbctool.hbc.hbc62.test import *
 from hbctool.hbc.hbc59.test import *
-from hbctool import hbc as hbcl, hasm
 import pathlib
-import json
 
 basepath = pathlib.Path(__file__).parent.absolute()
+
 
 class ByteIO:
     def __init__(self, v=b""):
@@ -19,7 +18,7 @@ class ByteIO:
         self.buf += b
 
     def read(self, n=-1):
-        if n==-1:
+        if n == -1:
             o = self.buf
             self.buf = b""
             return o
@@ -27,6 +26,7 @@ class ByteIO:
         o = self.buf[:n]
         self.buf = self.buf[n:]
         return o
+
 
 class TestFileUtilization(unittest.TestCase):
     def test_bit_writer(self):
@@ -84,7 +84,6 @@ class TestFileUtilization(unittest.TestCase):
         self.assertEqual(length, 3)
 
     def test_conversion(self):
-
         io = ByteIO()
         fr = BitReader(io)
         fw = BitWriter(io)
@@ -125,8 +124,10 @@ class TestFileUtilization(unittest.TestCase):
         with self.assertRaises(EOFError):
             fr.readbytes(1)
 
+
 def main():
     unittest.main()
+
 
 if __name__ == "__main__":
     main()

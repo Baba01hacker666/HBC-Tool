@@ -74,7 +74,13 @@ def set_fastutil_mode(enable_cpp: bool) -> bool:
     return module is not None
 
 
-def run_roundtrip(input_file: Path, out_dir: Path, label: str, enable_cpp: bool, force_clean: bool = True) -> RunMetrics:
+def run_roundtrip(
+    input_file: Path,
+    out_dir: Path,
+    label: str,
+    enable_cpp: bool,
+    force_clean: bool = True,
+) -> RunMetrics:
     hasm_dir = out_dir / f"{label}_hasm"
     output_bundle = out_dir / f"{label}.bundle"
 
@@ -125,7 +131,9 @@ def summarize(label: str, runs: list[RunMetrics]) -> dict:
     }
 
 
-def benchmark_mode(mode_name: str, input_file: Path, out_dir: Path, iterations: int, enable_cpp: bool) -> dict:
+def benchmark_mode(
+    mode_name: str, input_file: Path, out_dir: Path, iterations: int, enable_cpp: bool
+) -> dict:
     runs: list[RunMetrics] = []
     for i in range(iterations):
         runs.append(
@@ -139,8 +147,6 @@ def benchmark_mode(mode_name: str, input_file: Path, out_dir: Path, iterations: 
     return summarize(mode_name, runs)
 
 
-
-
 def benchmark_core_memcpy(enable_cpp: bool, loops: int = 10000) -> float:
     set_fastutil_mode(enable_cpp=enable_cpp)
     src = list(range(256)) * 40
@@ -152,13 +158,36 @@ def benchmark_core_memcpy(enable_cpp: bool, loops: int = 10000) -> float:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Benchmark hbctool and enforce output-size guardrails.")
-    parser.add_argument("input", type=Path, help="Path to source Hermes bytecode bundle")
-    parser.add_argument("--out-dir", type=Path, default=Path("output/bench"), help="Output directory for artifacts")
-    parser.add_argument("--iterations", type=int, default=2, help="Number of runs per mode")
-    parser.add_argument("--max-size-ratio", type=float, default=1.10, help="Fail if output/input ratio exceeds this")
-    parser.add_argument("--json", type=Path, default=None, help="Optional JSON output path")
-    parser.add_argument("--min-core-speedup", type=float, default=2.0, help="Required memcpy core speedup for C++ mode")
+    parser = argparse.ArgumentParser(
+        description="Benchmark hbctool and enforce output-size guardrails."
+    )
+    parser.add_argument(
+        "input", type=Path, help="Path to source Hermes bytecode bundle"
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=Path("output/bench"),
+        help="Output directory for artifacts",
+    )
+    parser.add_argument(
+        "--iterations", type=int, default=2, help="Number of runs per mode"
+    )
+    parser.add_argument(
+        "--max-size-ratio",
+        type=float,
+        default=1.10,
+        help="Fail if output/input ratio exceeds this",
+    )
+    parser.add_argument(
+        "--json", type=Path, default=None, help="Optional JSON output path"
+    )
+    parser.add_argument(
+        "--min-core-speedup",
+        type=float,
+        default=2.0,
+        help="Required memcpy core speedup for C++ mode",
+    )
     args = parser.parse_args()
 
     if args.iterations < 1:
@@ -168,26 +197,38 @@ def main() -> int:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    py_summary = benchmark_mode("python", args.input, args.out_dir, args.iterations, enable_cpp=False)
+    py_summary = benchmark_mode(
+        "python", args.input, args.out_dir, args.iterations, enable_cpp=False
+    )
 
     cpp_available = set_fastutil_mode(enable_cpp=True)
     cpp_summary = None
     if cpp_available:
-        cpp_summary = benchmark_mode("cpp", args.input, args.out_dir, args.iterations, enable_cpp=True)
+        cpp_summary = benchmark_mode(
+            "cpp", args.input, args.out_dir, args.iterations, enable_cpp=True
+        )
 
     comparisons = {
         "cpp_available": cpp_available,
         "speedup_vs_python": None,
         "python_size_ratio": py_summary["last_size_ratio_vs_input"],
-        "cpp_size_ratio": cpp_summary["last_size_ratio_vs_input"] if cpp_summary else None,
+        "cpp_size_ratio": cpp_summary["last_size_ratio_vs_input"]
+        if cpp_summary
+        else None,
     }
 
     core = None
     if cpp_summary:
-        comparisons["speedup_vs_python"] = py_summary["mean_total_seconds"] / cpp_summary["mean_total_seconds"]
+        comparisons["speedup_vs_python"] = (
+            py_summary["mean_total_seconds"] / cpp_summary["mean_total_seconds"]
+        )
         py_core = benchmark_core_memcpy(enable_cpp=False)
         cpp_core = benchmark_core_memcpy(enable_cpp=True)
-        core = {"python_memcpy_seconds": py_core, "cpp_memcpy_seconds": cpp_core, "memcpy_speedup": py_core / cpp_core}
+        core = {
+            "python_memcpy_seconds": py_core,
+            "cpp_memcpy_seconds": cpp_core,
+            "memcpy_speedup": py_core / cpp_core,
+        }
 
     report = {
         "input": str(args.input),
@@ -225,11 +266,15 @@ def main() -> int:
         failing_ratios.append(cpp_summary["last_size_ratio_vs_input"])
 
     if any(r > args.max_size_ratio for r in failing_ratios):
-        print(f"ERROR: one or more modes exceeded max size ratio {args.max_size_ratio:.4f}")
+        print(
+            f"ERROR: one or more modes exceeded max size ratio {args.max_size_ratio:.4f}"
+        )
         return 2
 
     if core and core["memcpy_speedup"] < args.min_core_speedup:
-        print(f"ERROR: core memcpy speedup {core['memcpy_speedup']:.3f}x is below required {args.min_core_speedup:.3f}x")
+        print(
+            f"ERROR: core memcpy speedup {core['memcpy_speedup']:.3f}x is below required {args.min_core_speedup:.3f}x"
+        )
         return 3
 
     return 0

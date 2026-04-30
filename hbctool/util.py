@@ -1,4 +1,3 @@
-
 from struct import pack, unpack
 from struct import error as StructError
 import importlib.util
@@ -6,8 +5,12 @@ import os
 
 
 _FASTUTIL_ENABLED = os.environ.get("HBCTOOL_FASTUTIL", "0") == "1"
-_FASTUTIL_SPEC = importlib.util.find_spec("hbctool._fastutil") if _FASTUTIL_ENABLED else None
-_BITCODEC_SPEC = importlib.util.find_spec("hbctool._bitcodec") if _FASTUTIL_ENABLED else None
+_FASTUTIL_SPEC = (
+    importlib.util.find_spec("hbctool._fastutil") if _FASTUTIL_ENABLED else None
+)
+_BITCODEC_SPEC = (
+    importlib.util.find_spec("hbctool._bitcodec") if _FASTUTIL_ENABLED else None
+)
 if _FASTUTIL_SPEC is not None:
     from hbctool import _fastutil
 else:
@@ -19,6 +22,7 @@ else:
     _bitcodec = None
 
 # File Object
+
 
 class BitWriter(object):
     def __init__(self, f):
@@ -37,7 +41,7 @@ class BitWriter(object):
     def __del__(self):
         try:
             self.flush()
-        except ValueError:   # I/O operation on closed file.
+        except ValueError:  # I/O operation on closed file.
             pass
 
     def _writebit(self, bit, remaining=-1):
@@ -45,7 +49,7 @@ class BitWriter(object):
             self.accumulator |= bit << (remaining - 1)
         else:
             self.accumulator |= bit << (7 - self.bcount + self.remained)
-        
+
         self.bcount += 1
 
         if self.bcount == 8:
@@ -53,7 +57,7 @@ class BitWriter(object):
 
     def _clearbits(self, remaining):
         self.remained = remaining
-    
+
     def _writebyte(self, b):
         assert not self.bcount, "bcount is not zero."
         self.out.write(bytes((b,)))
@@ -62,9 +66,11 @@ class BitWriter(object):
     def writebits(self, v, n, remained=False):
         i = n
         while i > 0:
-            self._writebit((v & (1 << i-1)) >> (i-1), remaining=(i if remained else -1))
+            self._writebit(
+                (v & (1 << i - 1)) >> (i - 1), remaining=(i if remained else -1)
+            )
             i -= 1
-        
+
         if remained:
             self._clearbits(n)
 
@@ -75,7 +81,7 @@ class BitWriter(object):
         data = v.to_bytes(n, byteorder="little", signed=False)
         self.out.write(data)
         self.write += len(data)
-        
+
         return v >> (n * 8)
 
     def flush(self):
@@ -95,23 +101,26 @@ class BitWriter(object):
         return self.write
 
     def pad(self, alignment):
-        assert alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0), "Support alignment as many as 8 bytes."
+        assert (
+            alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0)
+        ), "Support alignment as many as 8 bytes."
         l = self.tell()
         if l % alignment == 0:
             return
 
         b = alignment - (l % alignment)
         self.writeall([0] * (b))
-    
+
     def writeall(self, bs):
         self.out.write(bytes(bs))
         self.write += len(bs)
 
+
 class BitReader(object):
     def __init__(self, f):
         self.input = f
-        if hasattr(f, 'read'):
-            if hasattr(f, 'seek') and hasattr(f, 'tell'):
+        if hasattr(f, "read"):
+            if hasattr(f, "seek") and hasattr(f, "tell"):
                 try:
                     f.seek(0)
                     self.cache = f.read()
@@ -132,15 +141,15 @@ class BitReader(object):
         pass
 
     def _ensure_cache(self, n):
-        if n == float('inf'):
-            if hasattr(self.input, 'read'):
+        if n == float("inf"):
+            if hasattr(self.input, "read"):
                 more = self.input.read()
                 if more:
                     self.cache += more
             return
 
         if self.read + n > len(self.cache):
-            if hasattr(self.input, 'read'):
+            if hasattr(self.input, "read"):
                 more = self.input.read(self.read + n - len(self.cache))
                 if not more:
                     more = self.input.read()
@@ -167,9 +176,9 @@ class BitReader(object):
 
         if remaining > -1:
             assert remaining <= self.bcount, f"WTF ({remaining}, {self.bcount})"
-            return (self.accumulator & (1 << remaining-1)) >> remaining-1
+            return (self.accumulator & (1 << remaining - 1)) >> remaining - 1
 
-        rv = (self.accumulator & (1 << self.bcount-1)) >> self.bcount-1
+        rv = (self.accumulator & (1 << self.bcount - 1)) >> self.bcount - 1
         self.bcount -= 1
         return rv
 
@@ -192,12 +201,12 @@ class BitReader(object):
         while i > 0:
             v = (v << 1) | self._readbit(remaining=(i if remained else -1))
             i -= 1
-        
+
         if remained:
             self._clearbits(n)
-        
+
         return v
-    
+
     def readbytes(self, n=1):
         data = self.read_raw(n)
         return int.from_bytes(data, byteorder="big", signed=False)
@@ -206,24 +215,27 @@ class BitReader(object):
         self.read = i
         self.accumulator = 0
         self.bcount = 0
-    
+
     def tell(self):
         return self.read
-    
+
     def pad(self, alignment):
-        assert alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0), "Support alignment as many as 8 bytes."
+        assert (
+            alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0)
+        ), "Support alignment as many as 8 bytes."
         l = self.tell()
         if l % alignment == 0:
             return
 
         b = alignment - (l % alignment)
         self.seek(l + b)
-    
+
     def readall(self):
-        self._ensure_cache(float('inf'))
-        a = self.cache[self.read:]
+        self._ensure_cache(float("inf"))
+        a = self.cache[self.read :]
         self.read += len(a)
         return list(a)
+
 
 # File utilization function
 # Read
@@ -244,8 +256,10 @@ def readuint(f, bits=64, signed=False):
     x = int.from_bytes(data, byteorder="little", signed=signed)
     return x
 
+
 def readint(f, bits=64):
     return readuint(f, bits, signed=True)
+
 
 def readbits(f, bits=8):
     if not f.bcount and bits % 8 == 0:
@@ -260,7 +274,7 @@ def readbits(f, bits=8):
         x |= (b & 0xFF) << s
         s += l
         bits -= l
-        
+
     if bits >= 8 and not f.bcount:
         n = bits // 8
         if n > 0:
@@ -277,24 +291,47 @@ def readbits(f, bits=8):
 
     return x
 
+
 def read(f, format):
     type = format[0]
     bits = format[1]
     n = format[2]
 
-    if type == "uint":
-        r = [readuint(f, bits=bits) for _ in range(n)]
-    elif type == "int":
-        r = [readint(f, bits=bits) for _ in range(n)]
-    elif type == "bit":
-        r = [readbits(f, bits=bits) for _ in range(n)]
-    else:
-        raise Exception(f"Data type {type} is not supported.")
+    r = None
+    if (
+        type in ("uint", "int")
+        and bits % 8 == 0
+        and not getattr(f, "bcount", 0)
+        and n > 1
+    ):
+        bytes_per_item = bits // 8
+        if bytes_per_item in (1, 2, 4, 8):
+            signed = type == "int"
+            fmt_char = {
+                1: "b" if signed else "B",
+                2: "h" if signed else "H",
+                4: "i" if signed else "I",
+                8: "q" if signed else "Q",
+            }[bytes_per_item]
+
+            data = f.read_raw(bytes_per_item * n)
+            r = list(unpack(f"<{n}{fmt_char}", data))
+
+    if r is None:
+        if type == "uint":
+            r = [readuint(f, bits=bits) for _ in range(n)]
+        elif type == "int":
+            r = [readint(f, bits=bits) for _ in range(n)]
+        elif type == "bit":
+            r = [readbits(f, bits=bits) for _ in range(n)]
+        else:
+            raise Exception(f"Data type {type} is not supported.")
 
     if n == 1:
         return r[0]
     else:
         return r
+
 
 # Write
 def writeuint(f, v, bits=64, signed=False):
@@ -302,7 +339,7 @@ def writeuint(f, v, bits=64, signed=False):
 
     if bits == 8:
         if signed:
-            v = v & 0xff
+            v = v & 0xFF
         f.writebytes(v, 1)
         return
 
@@ -316,8 +353,10 @@ def writeuint(f, v, bits=64, signed=False):
     f.out.write(data)
     f.write += n
 
+
 def writeint(f, v, bits=64):
     return writeuint(f, v, bits, signed=True)
+
 
 def writebits(f, v, bits=8):
     if not f.bcount and bits % 8 == 0:
@@ -331,20 +370,21 @@ def writebits(f, v, bits=8):
         v = v >> l
         s += l
         bits -= l
-        
+
     if bits >= 8 and not f.bcount:
         n = bits // 8
         if n > 0:
-            writeuint(f, v & ((1 << (n*8)) - 1), n * 8)
+            writeuint(f, v & ((1 << (n * 8)) - 1), n * 8)
             v = v >> (n * 8)
             s += n * 8
             bits -= n * 8
-    
+
     r = bits % 8
     if r != 0:
         f.writebits(v & ((1 << bits) - 1), r, remained=True)
         v = v >> r
-        s+=r
+        s += r
+
 
 def write(f, v, format):
     t = format[0]
@@ -365,7 +405,8 @@ def write(f, v, format):
             writebits(f, v[i], bits=bits)
     else:
         raise Exception(f"Data type {t} is not supported.")
-    
+
+
 # Unpacking
 def to_uint8(buf):
     if _fastutil is not None:
@@ -375,6 +416,7 @@ def to_uint8(buf):
             raise StructError("unpack requires a buffer of 1 bytes")
     return buf[0]
 
+
 def to_uint16(buf):
     if _fastutil is not None:
         try:
@@ -382,6 +424,7 @@ def to_uint16(buf):
         except IndexError:
             raise StructError("unpack requires a buffer of 2 bytes")
     return unpack("<H", bytes(buf[:2]))[0]
+
 
 def to_uint32(buf):
     if _fastutil is not None:
@@ -391,6 +434,7 @@ def to_uint32(buf):
             raise StructError("unpack requires a buffer of 4 bytes")
     return unpack("<L", bytes(buf[:4]))[0]
 
+
 def to_int8(buf):
     if _fastutil is not None:
         try:
@@ -398,6 +442,7 @@ def to_int8(buf):
         except IndexError:
             raise StructError("unpack requires a buffer of 1 bytes")
     return unpack("<b", bytes([buf[0]]))[0]
+
 
 def to_int32(buf):
     if _fastutil is not None:
@@ -407,6 +452,7 @@ def to_int32(buf):
             raise StructError("unpack requires a buffer of 4 bytes")
     return unpack("<i", bytes(buf[:4]))[0]
 
+
 def to_double(buf):
     if _fastutil is not None:
         try:
@@ -415,42 +461,51 @@ def to_double(buf):
             raise StructError("unpack requires a buffer of 8 bytes")
     return unpack("<d", bytes(buf[:8]))[0]
 
+
 # Packing
+
 
 def from_uint8(val):
     if _fastutil is not None:
         return _fastutil.from_uint8(val)
     return [val]
 
+
 def from_uint16(val):
     if _fastutil is not None:
         return _fastutil.from_uint16(val)
     return list(pack("<H", val))
+
 
 def from_uint32(val):
     if _fastutil is not None:
         return _fastutil.from_uint32(val)
     return list(pack("<L", val))
 
+
 def from_int8(val):
     if _fastutil is not None:
         return _fastutil.from_int8(val)
     return list(pack("<b", val))
+
 
 def from_int32(val):
     if _fastutil is not None:
         return _fastutil.from_int32(val)
     return list(pack("<i", val))
 
+
 def from_double(val):
     if _fastutil is not None:
         return _fastutil.from_double(val)
     return list(pack("<d", val))
 
+
 # Buf Function
+
 
 def memcpy(dest, src, start, length):
     if _fastutil is not None:
         _fastutil.memcpy(dest, src, start, length)
         return
-    dest[start:start+length] = src[:length]
+    dest[start : start + length] = src[:length]
