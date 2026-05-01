@@ -65,7 +65,8 @@ def _build_parser():
     )
     parser.add_argument("--version", action="version", version=f"{metadata.project} {metadata.version}")
 
-    subparsers = parser.add_subparsers(dest="operation", required=True)
+    subparsers = parser.add_subparsers(dest="operation")
+    subparsers.required = True
 
     disasm_parser = subparsers.add_parser("disasm", aliases=["d"], help="Disassemble Hermes Bytecode")
     disasm_parser.add_argument("hbc_file", metavar="HBC_FILE", help="Target HBC file")
