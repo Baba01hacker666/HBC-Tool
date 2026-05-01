@@ -11,11 +11,11 @@ class HASMError(ValueError):
 
 
 FUNCTION_HEADER_RE = re.compile(
-    r"^Function<.*?>([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):$",
+    r"^Function(?:<.*?>)?([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):$",
     re.MULTILINE,
 )
 FUNCTION_BLOCK_RE = re.compile(
-    r"Function<.*?>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
+    r"Function(?:<.*?>)?([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
     re.DOTALL,
 )
 FUNCTION_LINE_RE = re.compile(

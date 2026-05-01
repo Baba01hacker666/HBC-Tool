@@ -63,12 +63,16 @@ def _build_parser():
         prog="hbctool",
         description="A command-line interface for disassembling and assembling the Hermes Bytecode.",
     )
-    parser.add_argument("--version", action="version", version=f"{metadata.project} {metadata.version}")
+    parser.add_argument(
+        "--version", action="version", version=f"{metadata.project} {metadata.version}"
+    )
 
     subparsers = parser.add_subparsers(dest="operation")
     subparsers.required = True
 
-    disasm_parser = subparsers.add_parser("disasm", aliases=["d"], help="Disassemble Hermes Bytecode")
+    disasm_parser = subparsers.add_parser(
+        "disasm", aliases=["d"], help="Disassemble Hermes Bytecode"
+    )
     disasm_parser.add_argument("hbc_file", metavar="HBC_FILE", help="Target HBC file")
     disasm_parser.add_argument(
         "hasm_path",
@@ -78,7 +82,9 @@ def _build_parser():
         help="Target HASM directory path",
     )
 
-    asm_parser = subparsers.add_parser("asm", aliases=["a"], help="Assemble Hermes Bytecode")
+    asm_parser = subparsers.add_parser(
+        "asm", aliases=["a"], help="Assemble Hermes Bytecode"
+    )
     asm_parser.add_argument(
         "hasm_path",
         metavar="HASM_PATH",

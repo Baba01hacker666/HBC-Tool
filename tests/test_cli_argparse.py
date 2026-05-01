@@ -61,7 +61,9 @@ def test_main_asm_custom_paths(monkeypatch):
 def test_main_aliases(monkeypatch):
     called = {"disasm": False, "asm": False}
 
-    monkeypatch.setattr(hbctool, "disasm", lambda *_: called.__setitem__("disasm", True))
+    monkeypatch.setattr(
+        hbctool, "disasm", lambda *_: called.__setitem__("disasm", True)
+    )
     monkeypatch.setattr(hbctool, "asm", lambda *_: called.__setitem__("asm", True))
 
     hbctool.main(["d", "bundle.hbc"])
@@ -94,9 +96,14 @@ def test_main_supports_version(capsys):
     assert hbctool.metadata.version in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("error_type", [FileNotFoundError, FileExistsError, hbctool.hasm.HASMError, ValueError])
+@pytest.mark.parametrize(
+    "error_type",
+    [FileNotFoundError, FileExistsError, hbctool.hasm.HASMError, ValueError],
+)
 def test_main_domain_errors_exit(monkeypatch, capsys, error_type):
-    monkeypatch.setattr(hbctool, "disasm", lambda *_: (_ for _ in ()).throw(error_type("boom")))
+    monkeypatch.setattr(
+        hbctool, "disasm", lambda *_: (_ for _ in ()).throw(error_type("boom"))
+    )
 
     with pytest.raises(SystemExit) as exc:
         hbctool.main(["disasm", "missing.hbc"])
