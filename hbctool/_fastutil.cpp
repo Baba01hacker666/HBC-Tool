@@ -618,25 +618,75 @@ static PyObject* fu_memcpy(PyObject*, PyObject* args) {
         return nullptr;
     }
 
+    Py_ssize_t dest_len = PyList_GET_SIZE(dest);
+    if (start < 0 || start + length > dest_len) {
+        PyErr_SetString(PyExc_IndexError, "dest bounds out of range");
+        return nullptr;
+    }
+
+    if (PyList_Check(src)) {
+        Py_ssize_t src_len = PyList_GET_SIZE(src);
+        if (length > src_len) {
+            PyErr_SetString(PyExc_IndexError, "src bounds out of range");
+            return nullptr;
+        }
+
+        PyObject** dest_items = PySequence_Fast_ITEMS(dest);
+        PyObject** src_items = PySequence_Fast_ITEMS(src);
+        for (Py_ssize_t i = 0; i < length; ++i) {
+            PyObject* item = src_items[i];
+
+            #if 0
+            long v = PyLong_AsLong(item);
+            if (PyErr_Occurred()) {
+                return nullptr;
+            }
+            if (v < 0 || v > 255) {
+                PyErr_SetString(PyExc_ValueError, "src item out of byte range");
+                return nullptr;
+            }
+            #endif
+
+            Py_INCREF(item);
+            PyObject* old_item = dest_items[start + i];
+            dest_items[start + i] = item;
+            Py_XDECREF(old_item);
+        }
+        Py_RETURN_NONE;
+    }
+
+    PyObject* fast_src = PySequence_Fast(src, "src must be a sequence");
+    if (!fast_src) return nullptr;
+
+    Py_ssize_t src_len = PySequence_Fast_GET_SIZE(fast_src);
+    if (length > src_len) {
+        PyErr_SetString(PyExc_IndexError, "src bounds out of range");
+        Py_DECREF(fast_src);
+        return nullptr;
+    }
+
+    PyObject** dest_items = PySequence_Fast_ITEMS(dest);
+    PyObject** src_items = PySequence_Fast_ITEMS(fast_src);
     for (Py_ssize_t i = 0; i < length; ++i) {
-        PyObject* item = PySequence_GetItem(src, i);
-        if (!item) return nullptr;
+        PyObject* item = src_items[i];
+
         long v = PyLong_AsLong(item);
-        if (PyErr_Occurred()) { Py_DECREF(item); return nullptr; }
+        if (PyErr_Occurred()) {
+            Py_DECREF(fast_src);
+            return nullptr;
+        }
         if (v < 0 || v > 255) {
-            Py_DECREF(item);
+            Py_DECREF(fast_src);
             PyErr_SetString(PyExc_ValueError, "src item out of byte range");
             return nullptr;
         }
-        PyObject* pyv = PyLong_FromLong(v);
-        Py_DECREF(item);
-        if (!pyv) return nullptr;
-        if (PyList_SetItem(dest, start + i, pyv) != 0) {
-            Py_DECREF(pyv);
-            return nullptr;
-        }
-    }
 
+        Py_INCREF(item);
+        PyObject* old_item = dest_items[start + i];
+        dest_items[start + i] = item;
+        Py_XDECREF(old_item);
+    }
+    Py_DECREF(fast_src);
     Py_RETURN_NONE;
 }
 
