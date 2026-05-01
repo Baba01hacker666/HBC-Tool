@@ -21,6 +21,7 @@ def _fixture(*parts, required=True):
         raise unittest.SkipTest(f"Missing required fixture: {'/'.join(parts)}")
     return None
 
+
 class TestHBC62(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super(TestHBC62, self).__init__(*args, **kwargs)
@@ -36,7 +37,10 @@ class TestHBC62(unittest.TestCase):
             self.skipTest("Missing pretty.out fixture")
         # hbcdump version 62 cannot fetch
         # target_offsets = re.findall(r"([0-9a-f]+) \<_[0-9]+\>", self.objdump)
-        target_args = re.findall(r"Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):", self.pretty)
+        target_args = re.findall(
+            r"Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):",
+            self.pretty,
+        )
 
         functionCount = self.hbc.getFunctionCount()
 
@@ -45,10 +49,18 @@ class TestHBC62(unittest.TestCase):
 
         for i in range(functionCount):
             # target_offset = target_offsets[i]
-            target_functionName, _, target_paramCount, target_registerCount, target_symbolCount = target_args[i]
+            (
+                target_functionName,
+                _,
+                target_paramCount,
+                target_registerCount,
+                target_symbolCount,
+            ) = target_args[i]
 
             try:
-                functionName, paramCount, registerCount, symbolCount, _, funcHeader = self.hbc.getFunction(i)
+                functionName, paramCount, registerCount, symbolCount, _, funcHeader = (
+                    self.hbc.getFunction(i)
+                )
             except AssertionError:
                 self.fail()
 
@@ -57,11 +69,14 @@ class TestHBC62(unittest.TestCase):
             self.assertEqual(registerCount, int(target_registerCount))
             self.assertEqual(symbolCount, int(target_symbolCount))
             # self.assertEqual(funcHeader["offset"], int(target_offset, 16))
-    
+
     def test_get_string(self):
         if self.pretty is None:
             self.skipTest("Missing pretty.out fixture")
-        target_strings = re.findall(r"[isp][0-9]+\[([UTFASCI16-]+), ([0-9]+)..([0-9-]+)\].*?:\s?(.*)", self.pretty)
+        target_strings = re.findall(
+            r"[isp][0-9]+\[([UTFASCI16-]+), ([0-9]+)..([0-9-]+)\].*?:\s?(.*)",
+            self.pretty,
+        )
         stringCount = self.hbc.getStringCount()
 
         self.assertEqual(stringCount, len(target_strings))
@@ -88,6 +103,8 @@ class TestHBC62(unittest.TestCase):
             _, _, _, _, bc, _ = self.hbc.getFunction(i, disasm=False)
 
             self.assertEqual(assemble(disassemble(bc)), bc)
+
+
 class TestParser62(unittest.TestCase):
     def test_hbc(self):
         f = open(_fixture("index.android.bundle"), "rb")

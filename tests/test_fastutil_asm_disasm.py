@@ -8,7 +8,9 @@ import pytest
 FASTUTIL_AVAILABLE = importlib.util.find_spec("hbctool._fastutil") is not None
 
 
-@pytest.mark.skipif(not FASTUTIL_AVAILABLE, reason="hbctool._fastutil extension is not built")
+@pytest.mark.skipif(
+    not FASTUTIL_AVAILABLE, reason="hbctool._fastutil extension is not built"
+)
 def test_fastutil_disasm_then_asm_roundtrip_for_sample_program():
     from hbctool import _fastutil
 
@@ -27,7 +29,9 @@ def test_fastutil_disasm_then_asm_roundtrip_for_sample_program():
     assert decoded == insts
 
 
-@pytest.mark.skipif(not FASTUTIL_AVAILABLE, reason="hbctool._fastutil extension is not built")
+@pytest.mark.skipif(
+    not FASTUTIL_AVAILABLE, reason="hbctool._fastutil extension is not built"
+)
 def test_fastutil_assemble_rejects_bad_operand_count():
     from hbctool import _fastutil
 

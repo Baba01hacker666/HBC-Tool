@@ -26,12 +26,14 @@ Examples:
     hbctool d index.android.bundle test_hasm
     hbctool a test_hasm index.android.bundle
 """
+
 from hbctool import metadata, hbc, hasm
 import os
 import sys
 
 DEFAULT_HASM_PATH = "hasm"
 DEFAULT_HBC_FILE = "index.android.bundle"
+
 
 def _confirm_overwrite(path):
     if not os.path.exists(path):
@@ -45,6 +47,7 @@ def _confirm_overwrite(path):
         raise FileExistsError(f"Output directory already exists: {path}")
 
     return True
+
 
 def disasm(hbcfile, hasmpath):
     if not os.path.isfile(hbcfile):
@@ -61,7 +64,8 @@ def disasm(hbcfile, hasmpath):
 
     overwrite = _confirm_overwrite(hasmpath)
     hasm.dump(hbco, hasmpath, force=overwrite)
-    print(f"[*] Done")
+    print("[*] Done")
+
 
 def asm(hasmpath, hbcfile):
     print(f"[*] Assemble '{hasmpath}' to '{hbcfile}' path")
@@ -74,24 +78,30 @@ def asm(hasmpath, hbcfile):
 
     with open(hbcfile, "wb") as f:
         hbc.dump(hbco, f)
-    print(f"[*] Done")
+    print("[*] Done")
+
 
 def main():
     from docopt import docopt
+
     args = docopt(__doc__, version=f"{metadata.project} {metadata.version}")
     try:
-        if args['disasm'] or args['d']:
-            disasm(args['<HBC_FILE>'], args['<HASM_PATH>'] or DEFAULT_HASM_PATH)
-        elif args['asm'] or args['a']:
-            asm(args['<HASM_PATH>'] or DEFAULT_HASM_PATH, args['<HBC_FILE>'] or DEFAULT_HBC_FILE)
+        if args["disasm"] or args["d"]:
+            disasm(args["<HBC_FILE>"], args["<HASM_PATH>"] or DEFAULT_HASM_PATH)
+        elif args["asm"] or args["a"]:
+            asm(
+                args["<HASM_PATH>"] or DEFAULT_HASM_PATH,
+                args["<HBC_FILE>"] or DEFAULT_HBC_FILE,
+            )
     except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
         print(f"[!] {exc}", file=sys.stderr)
         raise SystemExit(1)
-    
+
 
 def entry_point():
     """Zero-argument entry point for use with setuptools/distribute."""
     main()
+
 
 if __name__ == "__main__":
     main()
