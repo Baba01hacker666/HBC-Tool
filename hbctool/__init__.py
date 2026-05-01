@@ -1,33 +1,10 @@
 """
 A command-line interface for disassembling and assembling
 the Hermes Bytecode.
-
-Usage:
-    hbctool (disasm|d) <HBC_FILE> [<HASM_PATH>]
-    hbctool (asm|a) [<HASM_PATH>] [<HBC_FILE>]
-    hbctool --help
-    hbctool --version
-
-Operation:
-    disasm, d           Disassemble Hermes Bytecode
-    asm, a              Assemble Hermes Bytecode
-
-Args:
-    HBC_FILE            Target HBC file
-    HASM_PATH           Target HASM directory path
-
-Options:
-    --version           Show hbctool version
-    --help              Show hbctool help manual
-
-Examples:
-    hbctool disasm index.android.bundle test_hasm
-    hbctool asm test_hasm index.android.bundle
-    hbctool d index.android.bundle test_hasm
-    hbctool a test_hasm index.android.bundle
 """
 
 from hbctool import metadata, hbc, hasm
+import argparse
 import os
 import sys
 
@@ -81,18 +58,54 @@ def asm(hasmpath, hbcfile):
     print("[*] Done")
 
 
-def main():
-    from docopt import docopt
+def _build_parser():
+    parser = argparse.ArgumentParser(
+        prog="hbctool",
+        description="A command-line interface for disassembling and assembling the Hermes Bytecode.",
+    )
+    parser.add_argument("--version", action="version", version=f"{metadata.project} {metadata.version}")
 
-    args = docopt(__doc__, version=f"{metadata.project} {metadata.version}")
+    subparsers = parser.add_subparsers(dest="operation")
+    subparsers.required = True
+
+    disasm_parser = subparsers.add_parser("disasm", aliases=["d"], help="Disassemble Hermes Bytecode")
+    disasm_parser.add_argument("hbc_file", metavar="HBC_FILE", help="Target HBC file")
+    disasm_parser.add_argument(
+        "hasm_path",
+        metavar="HASM_PATH",
+        nargs="?",
+        default=DEFAULT_HASM_PATH,
+        help="Target HASM directory path",
+    )
+
+    asm_parser = subparsers.add_parser("asm", aliases=["a"], help="Assemble Hermes Bytecode")
+    asm_parser.add_argument(
+        "hasm_path",
+        metavar="HASM_PATH",
+        nargs="?",
+        default=DEFAULT_HASM_PATH,
+        help="Target HASM directory path",
+    )
+    asm_parser.add_argument(
+        "hbc_file",
+        metavar="HBC_FILE",
+        nargs="?",
+        default=DEFAULT_HBC_FILE,
+        help="Target HBC file",
+    )
+
+    return parser
+
+
+def main(argv=None):
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
     try:
-        if args["disasm"] or args["d"]:
-            disasm(args["<HBC_FILE>"], args["<HASM_PATH>"] or DEFAULT_HASM_PATH)
-        elif args["asm"] or args["a"]:
-            asm(
-                args["<HASM_PATH>"] or DEFAULT_HASM_PATH,
-                args["<HBC_FILE>"] or DEFAULT_HBC_FILE,
-            )
+        if args.operation in ("disasm", "d"):
+            disasm(args.hbc_file, args.hasm_path)
+        elif args.operation in ("asm", "a"):
+            asm(args.hasm_path, args.hbc_file)
     except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
         print(f"[!] {exc}", file=sys.stderr)
         raise SystemExit(1)

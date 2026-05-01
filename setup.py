@@ -43,7 +43,7 @@ setup(
     package_data=hbc_package_data,
     include_package_data=True,
     keywords=["hbc", "hermes", "bytecode", "reverse", "hacking"],
-    install_requires=["docopt>=0.6.2,<0.7.0"],
+    install_requires=[],
     entry_points={"console_scripts": ["hbctool=hbctool:main"]},
     python_requires=">=3.8",
     ext_modules=[fastutil_extension, bitcodec_extension],
