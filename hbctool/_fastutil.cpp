@@ -619,7 +619,7 @@ static PyObject* fu_memcpy(PyObject*, PyObject* args) {
     }
 
     Py_ssize_t dest_len = PyList_GET_SIZE(dest);
-    if (start < 0 || start + length > dest_len) {
+    if (start < 0 || length < 0 || dest_len - start < length) {
         PyErr_SetString(PyExc_IndexError, "dest bounds out of range");
         return nullptr;
     }
