@@ -21,7 +21,6 @@ documentation = "https://github.com/Baba01hacker666/HBC-Tool"
 
 [tool.poetry.dependencies]
 python = "^3.6"
-docopt = "^0.6.2"
 
 [tool.poetry.dev-dependencies]
 
