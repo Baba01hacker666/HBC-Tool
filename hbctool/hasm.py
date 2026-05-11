@@ -56,12 +56,22 @@ def _write_json_file(path, obj, indent=None):
 
 
 def dump(hbc, path, force=False):
-    if os.path.exists(path) and not force:
-        if os.path.abspath(path) in ("/", os.path.expanduser("~")):
-            raise HASMError(f"Refusing to remove unsafe output directory: {path}")
-        raise FileExistsError(f"Output directory already exists: {path}")
+    abs_path = os.path.abspath(os.path.normpath(path))
+    if abs_path in ("/", os.path.expanduser("~"), os.getcwd()):
+        raise HASMError(f"Refusing to remove unsafe output directory: {path}")
 
-    shutil.rmtree(path, ignore_errors=True)
+    if os.path.islink(path):
+        raise HASMError(f"Refusing to remove symbolic link: {path}")
+
+    if os.path.exists(path):
+        if not force:
+            raise FileExistsError(f"Output directory already exists: {path}")
+
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            os.remove(path)
+
     os.makedirs(path)
     # Write all obj to metadata.json
     _write_json_file(os.path.join(path, "metadata.json"), hbc.getObj())
