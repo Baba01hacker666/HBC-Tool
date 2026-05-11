@@ -220,8 +220,8 @@ def export(obj, f):
     # Segment 4: StringTable
     stringTableEntries = obj["stringTableEntries"]
     for i in range(header["stringCount"]):
+        stringTableEntry = stringTableEntries[i]
         for key in stringTableEntryS:
-            stringTableEntry = stringTableEntries[i]
             write(f, stringTableEntry[key], stringTableEntryS[key])
 
     align(f)
@@ -229,8 +229,8 @@ def export(obj, f):
     # Segment 5: StringTableOverflow
     stringTableOverflowEntries = obj["stringTableOverflowEntries"]
     for i in range(header["overflowStringCount"]):
+        stringTableOverflowEntry = stringTableOverflowEntries[i]
         for key in overflowStringTableEntryS:
-            stringTableOverflowEntry = stringTableOverflowEntries[i]
             write(f, stringTableOverflowEntry[key], overflowStringTableEntryS[key])
 
     align(f)
