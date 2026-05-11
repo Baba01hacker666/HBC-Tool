@@ -16,8 +16,12 @@ def _confirm_overwrite(path):
     if not os.path.exists(path):
         return False
 
-    if os.path.abspath(path) in ("/", os.path.expanduser("~")):
+    abs_path = os.path.abspath(os.path.normpath(path))
+    if abs_path in ("/", os.path.expanduser("~"), os.getcwd()):
         raise hasm.HASMError(f"Refusing to remove unsafe output directory: {path}")
+
+    if os.path.islink(path):
+        raise hasm.HASMError(f"Refusing to remove symbolic link: {path}")
 
     c = input(f"'{path}' exists. Do you want to remove it ? (y/n): ").lower().strip()
     if c[:1] != "y":
