@@ -77,6 +77,6 @@ def assemble(insts):
         for oper_t, _, val in operands:
             assert oper_t in operand_type, f"Malicious operand type: {oper_t}"
             _, _, conv_from = operand_type[oper_t]
-            bc += conv_from(val)
+            bc.extend(conv_from(val))
 
     return bc
