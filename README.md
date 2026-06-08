@@ -158,7 +158,7 @@ If the built wheel includes the compiled extension, it will be platform-tagged r
 ## Credits
 
 - Original work: `Kirlif bongtrop  ErbaZZ and Jusmistic `
-- Ongoing maintenance and remastering: `Doraemon cyber team`
+- Ongoing maintenance and remastering: `baba01hacker`
 
 ## License
 
