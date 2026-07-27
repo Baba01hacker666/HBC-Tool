@@ -37,8 +37,14 @@ def write_func(f, func, i, hbc):
             o.append(f"{t}:{val}")
 
             if is_str:
-                s, _ = hbc.getString(val)
-                ss.append((ii, val, s))
+                if 0 <= val < hbc.getStringCount():
+                    try:
+                        s, _ = hbc.getString(val)
+                        ss.append((ii, val, s))
+                    except Exception:
+                        ss.append((ii, val, "<invalid string id>"))
+                else:
+                    ss.append((ii, val, "<invalid string id>"))
 
         f.write(f"{', '.join(o)}\n")
         if len(ss) > 0:
