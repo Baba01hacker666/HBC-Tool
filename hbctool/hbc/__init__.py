@@ -10,6 +10,7 @@ BYTECODE_ALIGNMENT = 4
 _HBC_MODULES = {
     100: "hbctool.hbc.hbc100",
     98: "hbctool.hbc.hbc98",
+    97: "hbctool.hbc.hbc97",
     96: "hbctool.hbc.hbc96",
     95: "hbctool.hbc.hbc95",
     94: "hbctool.hbc.hbc94",

@@ -14,7 +14,7 @@ ByteStringTag = 6 << 4
 TagMask = 0x70
 
 
-class HBC100:
+class HBC97:
     def __init__(self, f=None):
         self._string_id_cache = {}
         self._last_string_id_searched = -1
@@ -33,7 +33,7 @@ class HBC100:
         return self.obj
 
     def getVersion(self):
-        return 100
+        return 97
 
     def getHeader(self):
         return self.getObj()["header"]
