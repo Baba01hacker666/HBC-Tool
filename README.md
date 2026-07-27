@@ -31,7 +31,7 @@ React Native apps can ship JavaScript through the Hermes engine, which compiles 
 - Assemble edited HASM output back into a Hermes bundle.
 - Optional C++ acceleration for faster low-level operations.
 - Test coverage for pure-Python and native execution paths.
-- Support for Hermes bytecode versions `59`, `62`, `74`, `76`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, and `96`.
+- Support for Hermes bytecode versions `59`, `62`, `74`, `76`, `83`, `84`, `85`, `86`, `87`, `88`, `89`, `90`, `91`, `92`, `93`, `94`, `95`, `96`, `97`, `98`, and `100`.
 
 ## Installation
 
