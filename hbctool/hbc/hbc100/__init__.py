@@ -100,13 +100,13 @@ class HBC100:
 
         is_utf16 = False
         try:
-            s.decode("ascii")
-        except UnicodeDecodeError:
+            s.encode("ascii")
+        except UnicodeEncodeError:
             is_utf16 = True
 
         if is_utf16:
             encoded = []
-            for char in s.decode("utf-8"):
+            for char in s:
                 cp = ord(char)
                 if cp <= 0xFFFF:
                     encoded.extend(pack("<H", cp))
@@ -120,6 +120,7 @@ class HBC100:
             length = len(s) // 2
         else:
             length = len(s)
+            s = s.encode("utf-8") if isinstance(s, str) else s
 
         stringTableEntry = self.getObj()["stringTableEntries"][sid]
         offset = len(self.getObj()["stringStorage"])
