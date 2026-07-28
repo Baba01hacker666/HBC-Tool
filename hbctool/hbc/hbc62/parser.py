@@ -182,22 +182,13 @@ def export(obj, f):
 
     align(f)
 
-    overflowedFunctionHeaders = []
-    overflowedFunctionHeaderPositions = []
     # Segment 2: Function Header
     functionHeaders = obj["functionHeaders"]
     for i in range(header["functionCount"]):
         functionHeader = functionHeaders[i]
-        if "small" in functionHeader:
-            overflowedFunctionHeaderPositions.append(f.tell())
-            for key in smallFunctionHeaderS:
-                write(f, functionHeader["small"][key], smallFunctionHeaderS[key])
-
-            overflowedFunctionHeaders.append(functionHeader)
-
-        else:
-            for key in smallFunctionHeaderS:
-                write(f, functionHeader[key], smallFunctionHeaderS[key])
+        small = functionHeader.get("small", functionHeader)
+        for key in smallFunctionHeaderS:
+            write(f, small[key], smallFunctionHeaderS[key])
 
     align(f)
 
@@ -291,20 +282,4 @@ def export(obj, f):
     # Write remaining
     f.writeall(obj["inst"])
 
-    # Write Overflowed Function Header at the tail and patch SmallFuncHeader pointers.
-    for overflowedFunctionHeader, smallHeaderPos in zip(
-        overflowedFunctionHeaders, overflowedFunctionHeaderPositions
-    ):
-        large_offset = f.tell()
-        smallFunctionHeader = overflowedFunctionHeader["small"]
-        smallFunctionHeader["infoOffset"] = large_offset >> 16
-        smallFunctionHeader["offset"] = large_offset & 0xFFFF
 
-        for key in functionHeaderS:
-            write(f, overflowedFunctionHeader[key], functionHeaderS[key])
-
-        current_pos = f.tell()
-        f.seek(smallHeaderPos)
-        for key in smallFunctionHeaderS:
-            write(f, smallFunctionHeader[key], smallFunctionHeaderS[key])
-        f.seek(current_pos)

@@ -176,22 +176,13 @@ def export(obj, f):
 
     align(f)
 
-    overflowedFunctionHeaders = []
-    overflowedFunctionHeaderPositions = []
     # Segment 2: Function Header
     functionHeaders = obj["functionHeaders"]
     for i in range(header["functionCount"]):
         functionHeader = functionHeaders[i]
-        if "small" in functionHeader:
-            overflowedFunctionHeaderPositions.append(f.tell())
-            for key in smallFunctionHeaderS:
-                write(f, functionHeader["small"][key], smallFunctionHeaderS[key])
-
-            overflowedFunctionHeaders.append(functionHeader)
-
-        else:
-            for key in smallFunctionHeaderS:
-                write(f, functionHeader[key], smallFunctionHeaderS[key])
+        small = functionHeader.get("small", functionHeader)
+        for key in smallFunctionHeaderS:
+            write(f, small[key], smallFunctionHeaderS[key])
 
     align(f)
 
