@@ -213,6 +213,9 @@ class HBC95:
         stringStorage = self.getObj()["stringStorage"]
         memcpy(stringStorage, s, offset, len(s))
 
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
+
         if string_id_cache is not None:
             string_id_cache[string_value] = count
         self._string_id_cache[string_value] = count
@@ -330,6 +333,9 @@ class HBC95:
 
         memcpy(stringStorage, s, offset, len(s))
 
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
+
 
     def setString(self, sid, val):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
@@ -380,6 +386,9 @@ class HBC95:
                 length *= 2
 
         memcpy(stringStorage, s, offset, len(s))
+
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
 
     def _checkBufferTag(self, buf, iid):
         keyTag = buf[iid]

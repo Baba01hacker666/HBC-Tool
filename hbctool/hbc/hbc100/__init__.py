@@ -144,6 +144,9 @@ class HBC100:
         from hbctool.util import memcpy
         memcpy(stringStorage, s, offset, len(s))
 
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
+
         if string_id_cache is not None:
             string_id_cache[string_value] = count
         self._string_id_cache[string_value] = count
@@ -241,6 +244,9 @@ class HBC100:
                 length *= 2
 
         memcpy(stringStorage, s, offset, len(s))
+
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
 
     def getFunction(self, fid, disasm=True):
         assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"
@@ -383,6 +389,9 @@ class HBC100:
                 length *= 2
 
         memcpy(stringStorage, s, offset, len(s))
+
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
 
     def getFunction(self, fid, disasm=True):
         assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"

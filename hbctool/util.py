@@ -519,3 +519,19 @@ def memcpy(dest, src, start, length):
         _fastutil.memcpy(dest, src, start, length)
         return
     dest[start : start + length] = src[:length]
+
+
+def hash_string(val):
+    h = 0
+    if isinstance(val, str):
+        for c in val:
+            h = (h + ord(c)) & 0xFFFFFFFF
+            h = (h + (h << 10)) & 0xFFFFFFFF
+            h = (h ^ (h >> 6)) & 0xFFFFFFFF
+    else:
+        for c in val:
+            h = (h + c) & 0xFFFFFFFF
+            h = (h + (h << 10)) & 0xFFFFFFFF
+            h = (h ^ (h >> 6)) & 0xFFFFFFFF
+    return h
+

@@ -4,8 +4,10 @@ from hbctool.util import (
     to_uint8, to_uint16, to_uint32,
     to_int8, to_int32, to_double,
     from_uint8, from_uint16, from_uint32,
-    from_int8, from_int32, from_double
+    from_int8, from_int32, from_double,
+    hash_string
 )
+
 
 @pytest.mark.parametrize(
     "buf, expected",
@@ -136,3 +138,10 @@ def test_from_int32():
 def test_from_double():
     assert from_double(1.0) == [0, 0, 0, 0, 0, 0, 240, 63]
     assert from_double(0.0) == [0, 0, 0, 0, 0, 0, 0, 0]
+
+def test_hash_string():
+    assert hash_string("Animated") == 1802960440
+    assert hash_string("isArray") == 1398931944
+    assert hash_string("Array") == 3111565995
+    assert hash_string(b"Boolean") == 3327810063
+
