@@ -224,6 +224,28 @@ class HBC93:
     def getStringCount(self):
         return self.getObj()["header"]["stringCount"]
 
+    def getString_old(self, sid):
+        assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
+
+        stringTableEntry = self.getObj()["stringTableEntries"][sid]
+        stringStorage = self.getObj()["stringStorage"]
+        stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
+
+        isUTF16 = stringTableEntry["isUTF16"]
+        offset = stringTableEntry["offset"]
+        length = stringTableEntry["length"]
+
+        if length >= INVALID_LENGTH:
+            stringTableOverflowEntry = stringTableOverflowEntries[offset]
+            offset = stringTableOverflowEntry["offset"]
+            length = stringTableOverflowEntry["length"]
+
+        if isUTF16:
+            length *= 2
+
+        s = bytes(stringStorage[offset : offset + length])
+        return s.hex() if isUTF16 else s.decode("utf-8"), (isUTF16, offset, length)
+
     def getString(self, sid):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
 
