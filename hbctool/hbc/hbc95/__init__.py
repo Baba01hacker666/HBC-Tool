@@ -213,9 +213,6 @@ class HBC95:
         stringStorage = self.getObj()["stringStorage"]
         memcpy(stringStorage, s, offset, len(s))
 
-        if sid < self.getObj()["header"]["identifierCount"]:
-            self.getObj()["identifierHashes"][sid] = hash_string(val)
-
         if string_id_cache is not None:
             string_id_cache[string_value] = count
         self._string_id_cache[string_value] = count
@@ -288,7 +285,7 @@ class HBC95:
             offset = stringTableOverflowEntry["offset"]
             length = stringTableOverflowEntry["length"]
 
-        is_utf16 = not val.isascii() if isinstance(val, str) else False
+        is_utf16 = isUTF16 or (not val.isascii() if isinstance(val, str) else False)
         if is_utf16:
             if isinstance(val, str):
                 encoded = []
@@ -309,6 +306,11 @@ class HBC95:
         else:
             s = val.encode("utf-8") if isinstance(val, str) else val
             l = len(s)
+
+        if is_utf16 == isUTF16 and l == length:
+            current_length = length * 2 if isUTF16 else length
+            if bytes(stringStorage[offset : offset + current_length]) == s:
+                return
 
         stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
 
@@ -356,13 +358,18 @@ class HBC95:
             offset = stringTableOverflowEntry["offset"]
             length = stringTableOverflowEntry["length"]
 
-        is_utf16 = not val.isascii() if isinstance(val, str) else False
+        is_utf16 = isUTF16 or (not val.isascii() if isinstance(val, str) else False)
         if is_utf16:
             s = val.encode("utf-16-le") if isinstance(val, str) else val
             l = len(s) // 2
         else:
             s = val.encode("utf-8") if isinstance(val, str) else val
             l = len(s)
+
+        if is_utf16 == isUTF16 and l == length:
+            current_length = length * 2 if isUTF16 else length
+            if bytes(stringStorage[offset : offset + current_length]) == s:
+                return
 
         stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
 
