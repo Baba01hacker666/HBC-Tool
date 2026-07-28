@@ -517,6 +517,41 @@ class TestCombinedRegressions:
         assert rebuilt.getFunctionCount() == hbc_obj.getFunctionCount()
         assert rebuilt.getStringCount() == hbc_obj.getStringCount()
 
+    def test_hasm_load_string_only_edit_does_not_reassemble_functions(self, tmp_path):
+        """Editing only string.json must not inflate the instruction stream."""
+        orig = _load_orig()
+        hbc_obj = hbc.load(io.BytesIO(orig))
+        hasm.dump(hbc_obj, tmp_path, force=True)
+
+        strings_path = tmp_path / "string.json"
+        strings = json.loads(strings_path.read_text(encoding="utf-8"))
+        identifier_count = hbc_obj.getHeader()["identifierCount"]
+        for entry in strings:
+            if (
+                entry["id"] >= identifier_count
+                and not entry["isUTF16"]
+                and len(entry["value"]) >= 2
+            ):
+                entry["value"] = entry["value"][:-1] + (
+                    "z" if entry["value"][-1] != "z" else "a"
+                )
+                changed_sid = entry["id"]
+                changed_value = entry["value"]
+                break
+        else:
+            pytest.fail("No suitable ASCII string found in fixture")
+        strings_path.write_text(
+            json.dumps(strings, indent=4, ensure_ascii=False), encoding="utf-8"
+        )
+
+        rebuilt = hasm.load(tmp_path)
+        out = _dump_bytes(rebuilt)
+
+        assert len(out) == len(orig)
+        assert _file_length_from_bytes(out) == len(out)
+        assert rebuilt.getObj()["inst"] == hbc_obj.getObj()["inst"]
+        assert rebuilt.getString(changed_sid)[0] == changed_value
+
     def test_multiple_string_changes_and_roundtrip(self):
         """
         Making several string changes then dumping must produce a structurally
