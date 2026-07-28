@@ -72,6 +72,9 @@ def _build_parser():
         description="A command-line interface for disassembling and assembling the Hermes Bytecode.",
     )
     parser.add_argument(
+        "--version", action="version", version=f"{metadata.project} {metadata.version}"
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose debug output and full tracebacks"
     )
 
