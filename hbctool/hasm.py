@@ -290,6 +290,40 @@ def _build_string_id_cache(hbc):
     return string_id_cache
 
 
+def _functions_equal(current_func, parsed_func):
+    """Return True when a HASM function block matches the existing bytecode.
+
+    Loading a dumped project may only change string.json. Re-assembling every
+    unchanged function can still perturb bytecode size on bundles that contain
+    opcodes/operands the assembler cannot reproduce byte-for-byte. Skip those
+    functions so string-only edits preserve the original instruction stream.
+    """
+    if current_func[:4] != parsed_func[:4]:
+        return False
+
+    current_insts = current_func[4]
+    parsed_insts = parsed_func[4]
+    if len(current_insts) != len(parsed_insts):
+        return False
+
+    for (current_opcode, current_operands), (parsed_opcode, parsed_operands) in zip(
+        current_insts, parsed_insts
+    ):
+        if (
+            current_opcode != parsed_opcode
+            or len(current_operands) != len(parsed_operands)
+        ):
+            return False
+        for current_operand, parsed_operand in zip(current_operands, parsed_operands):
+            if (
+                current_operand[0] != parsed_operand[0]
+                or current_operand[2] != parsed_operand[2]
+            ):
+                return False
+
+    return True
+
+
 def load(path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} does not exist.")
@@ -316,24 +350,32 @@ def load(path):
     string_id_cache = _build_string_id_cache(hbc)
 
     offset_shift = 0
+    functions_changed = False
     next_fid = 0
     pending = {}
     with open(os.path.join(path, "instruction.hasm"), "r", encoding="utf-8") as f:
         for fid, func in _iter_hasm_functions(f, hbc):
             pending[fid] = func
             while next_fid in pending:
+                func = pending.pop(next_fid)
+                if _functions_equal(hbc.getFunction(next_fid), func):
+                    next_fid += 1
+                    continue
+
                 delta = hbc.setFunction(
                     next_fid,
-                    pending.pop(next_fid),
+                    func,
                     offset_shift=offset_shift,
                     string_id_cache=string_id_cache,
                 )
+                functions_changed = True
                 offset_shift += delta
                 next_fid += 1
 
     if next_fid != hbc.getFunctionCount():
         raise HASMError("Malformed HASM: missing function blocks.")
 
-    hbc._rebuild_function_offsets()
+    if functions_changed:
+        hbc._rebuild_function_offsets()
 
     return hbc
