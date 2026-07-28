@@ -57,8 +57,8 @@ def write_func(f, func, i, hbc):
 
 
 def _write_json_file(path, obj, indent=None):
-    with open(path, "w") as f:
-        json.dump(obj, f, indent=indent)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=indent, ensure_ascii=False)
 
 
 def dump(hbc, path, force=False):
@@ -92,7 +92,7 @@ def dump(hbc, path, force=False):
 
     _write_json_file(os.path.join(path, "string.json"), ss, indent=4)
 
-    with open(os.path.join(path, "instruction.hasm"), "w") as f:
+    with open(os.path.join(path, "instruction.hasm"), "w", encoding="utf-8") as f:
         for i in range(functionCount):
             write_func(f, hbc.getFunction(i), i, hbc)
 
@@ -300,10 +300,10 @@ def load(path):
     if not os.path.exists(os.path.join(path, "instruction.hasm")):
         raise FileNotFoundError("instruction.hasm not found.")
 
-    with open(os.path.join(path, "metadata.json"), "r") as f:
+    with open(os.path.join(path, "metadata.json"), "r", encoding="utf-8") as f:
         hbc = hbcl.loado(json.load(f))
 
-    with open(os.path.join(path, "string.json"), "r") as f:
+    with open(os.path.join(path, "string.json"), "r", encoding="utf-8") as f:
         strings = json.load(f)
 
     for string in strings:
@@ -318,7 +318,7 @@ def load(path):
     offset_shift = 0
     next_fid = 0
     pending = {}
-    with open(os.path.join(path, "instruction.hasm"), "r") as f:
+    with open(os.path.join(path, "instruction.hasm"), "r", encoding="utf-8") as f:
         for fid, func in _iter_hasm_functions(f, hbc):
             pending[fid] = func
             while next_fid in pending:
