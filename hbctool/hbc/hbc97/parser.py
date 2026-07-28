@@ -108,8 +108,7 @@ def parse(f):
     align(f)
 
     # Segment 6: StringStorage
-    stringStorageS[2] = header["stringStorageSize"]
-    stringStorage = read(f, stringStorageS)
+    stringStorage = read(f, [stringStorageS[0], stringStorageS[1], header["stringStorageSize"]])
 
     obj["stringStorage"] = stringStorage
     align(f)
@@ -144,8 +143,7 @@ def parse(f):
     align(f)
 
     # Segment 12: RegExpStorage
-    regExpStorageS[2] = header["regExpStorageSize"]
-    regExpStorage = read(f, regExpStorageS)
+    regExpStorage = read(f, [regExpStorageS[0], regExpStorageS[1], header["regExpStorageSize"]])
 
     obj["regExpStorage"] = regExpStorage
     align(f)
@@ -171,6 +169,9 @@ def parse(f):
 def export(obj, f):
     # Segment 1: Header
     header = obj["header"]
+    # Record the byte offset of fileLength field so we can patch it at end
+    # magic(8) + version(4) + sourceHash(20) = 32 bytes => fileLength starts at byte 32
+    file_length_offset = 32
     for key in headerS:
         write(f, header[key], headerS[key])
 
@@ -220,8 +221,7 @@ def export(obj, f):
 
     # Segment 6: StringStorage
     stringStorage = obj["stringStorage"]
-    stringStorageS[2] = header["stringStorageSize"]
-    write(f, stringStorage, stringStorageS)
+    write(f, stringStorage, [stringStorageS[0], stringStorageS[1], header["stringStorageSize"]])
 
     align(f)
 
@@ -250,8 +250,7 @@ def export(obj, f):
 
     # Segment 12: RegExpStorage
     regExpStorage = obj["regExpStorage"]
-    regExpStorageS[2] = header["regExpStorageSize"]
-    write(f, regExpStorage, regExpStorageS)
+    write(f, regExpStorage, [regExpStorageS[0], regExpStorageS[1], header["regExpStorageSize"]])
 
     align(f)
 
@@ -266,6 +265,15 @@ def export(obj, f):
 
     # Write remaining
     f.writeall(obj["inst"])
+
+    # Patch fileLength in the header (at byte offset 32) with the exact output size
+    total_size = f.tell()
+    header["fileLength"] = total_size
+    saved_pos = f.tell()
+    f.seek(file_length_offset)
+    import struct
+    f.out.write(struct.pack("<I", total_size))
+    f.seek(saved_pos)
 
     # Write Overflowed Function Header at the tail and patch SmallFuncHeader pointers.
     for overflowedFunctionHeader, smallHeaderPos in zip(

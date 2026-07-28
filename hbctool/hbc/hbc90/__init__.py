@@ -244,7 +244,7 @@ class HBC90:
             length *= 2
 
         s = bytes(stringStorage[offset : offset + length])
-        return s.hex() if isUTF16 else s.decode("utf-8"), (isUTF16, offset, length)
+        return s.decode("utf-16-le") if isUTF16 else s.decode("utf-8"), (isUTF16, offset, length)
 
     def setString(self, sid, val):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
