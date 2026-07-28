@@ -30,7 +30,7 @@ def _confirm_overwrite(path):
     return True
 
 
-def disasm(hbcfile, hasmpath, use_old=False):
+def disasm(hbcfile, hasmpath, use_old=False, verbose=False):
     if not os.path.isfile(hbcfile):
         raise FileNotFoundError(f"HBC file not found: {hbcfile}")
 
@@ -42,13 +42,15 @@ def disasm(hbcfile, hasmpath, use_old=False):
     sourceHash = bytes(header["sourceHash"]).hex()
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
+    if verbose:
+        print(f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}")
 
     overwrite = _confirm_overwrite(hasmpath)
     hasm.dump(hbco, hasmpath, force=overwrite)
     print("[*] Done")
 
 
-def asm(hasmpath, hbcfile, use_old=False):
+def asm(hasmpath, hbcfile, use_old=False, verbose=False):
     print(f"[*] Assemble '{hasmpath}' to '{hbcfile}' path")
     hbco = hasm.load(hasmpath)
 
@@ -56,6 +58,8 @@ def asm(hasmpath, hbcfile, use_old=False):
     sourceHash = bytes(header["sourceHash"]).hex()
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
+    if verbose:
+        print(f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}")
 
     with open(hbcfile, "wb") as f:
         hbc.dump(hbco, f)
@@ -68,7 +72,7 @@ def _build_parser():
         description="A command-line interface for disassembling and assembling the Hermes Bytecode.",
     )
     parser.add_argument(
-        "--version", action="version", version=f"{metadata.project} {metadata.version}"
+        "-v", "--verbose", action="store_true", help="Enable verbose debug output and full tracebacks"
     )
 
     subparsers = parser.add_subparsers(dest="operation")
@@ -91,6 +95,12 @@ def _build_parser():
         action="store_true",
         dest="use_old",
         help="Use legacy manual surrogate pair string encoding loop",
+    )
+    disasm_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug output and full tracebacks",
     )
 
     asm_parser = subparsers.add_parser(
@@ -117,6 +127,12 @@ def _build_parser():
         dest="use_old",
         help="Use legacy manual surrogate pair string encoding loop",
     )
+    asm_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug output and full tracebacks",
+    )
 
     return parser
 
@@ -127,11 +143,15 @@ def main(argv=None):
 
     try:
         if args.operation in ("disasm", "d"):
-            disasm(args.hbc_file, args.hasm_path, use_old=args.use_old)
+            disasm(args.hbc_file, args.hasm_path, use_old=args.use_old, verbose=args.verbose)
         elif args.operation in ("asm", "a"):
-            asm(args.hasm_path, args.hbc_file, use_old=args.use_old)
-    except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
-        print(f"[!] {exc}", file=sys.stderr)
+            asm(args.hasm_path, args.hbc_file, use_old=args.use_old, verbose=args.verbose)
+    except Exception as exc:
+        if getattr(args, "verbose", False):
+            import traceback
+            traceback.print_exc()
+        else:
+            print(f"[!] {exc}", file=sys.stderr)
         raise SystemExit(1)
 
 
