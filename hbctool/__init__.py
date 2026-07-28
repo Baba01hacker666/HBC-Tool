@@ -30,7 +30,7 @@ def _confirm_overwrite(path):
     return True
 
 
-def disasm(hbcfile, hasmpath):
+def disasm(hbcfile, hasmpath, use_old=False):
     if not os.path.isfile(hbcfile):
         raise FileNotFoundError(f"HBC file not found: {hbcfile}")
 
@@ -48,7 +48,7 @@ def disasm(hbcfile, hasmpath):
     print("[*] Done")
 
 
-def asm(hasmpath, hbcfile):
+def asm(hasmpath, hbcfile, use_old=False):
     print(f"[*] Assemble '{hasmpath}' to '{hbcfile}' path")
     hbco = hasm.load(hasmpath)
 
@@ -85,6 +85,13 @@ def _build_parser():
         default=DEFAULT_HASM_PATH,
         help="Target HASM directory path",
     )
+    disasm_parser.add_argument(
+        "-old",
+        "--use-old-string-method",
+        action="store_true",
+        dest="use_old",
+        help="Use legacy manual surrogate pair string encoding loop",
+    )
 
     asm_parser = subparsers.add_parser(
         "asm", aliases=["a"], help="Assemble Hermes Bytecode"
@@ -103,6 +110,13 @@ def _build_parser():
         default=DEFAULT_HBC_FILE,
         help="Target HBC file",
     )
+    asm_parser.add_argument(
+        "-old",
+        "--use-old-string-method",
+        action="store_true",
+        dest="use_old",
+        help="Use legacy manual surrogate pair string encoding loop",
+    )
 
     return parser
 
@@ -113,9 +127,9 @@ def main(argv=None):
 
     try:
         if args.operation in ("disasm", "d"):
-            disasm(args.hbc_file, args.hasm_path)
+            disasm(args.hbc_file, args.hasm_path, use_old=args.use_old)
         elif args.operation in ("asm", "a"):
-            asm(args.hasm_path, args.hbc_file)
+            asm(args.hasm_path, args.hbc_file, use_old=args.use_old)
     except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
         print(f"[!] {exc}", file=sys.stderr)
         raise SystemExit(1)

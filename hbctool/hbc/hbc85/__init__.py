@@ -268,6 +268,71 @@ class HBC85:
         s = bytes(stringStorage[offset : offset + length])
         return s.decode("utf-16-le") if isUTF16 else s.decode("utf-8"), (isUTF16, offset, length)
 
+    def setString_old(self, sid, val):
+        assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
+
+        self._string_id_cache = {}
+        self._last_string_id_searched = -1
+
+        stringTableEntry = self.getObj()["stringTableEntries"][sid]
+        stringStorage = self.getObj()["stringStorage"]
+        stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
+
+        isUTF16 = stringTableEntry["isUTF16"]
+        offset = stringTableEntry["offset"]
+        length = stringTableEntry["length"]
+
+        if length >= INVALID_LENGTH:
+            stringTableOverflowEntry = stringTableOverflowEntries[offset]
+            offset = stringTableOverflowEntry["offset"]
+            length = stringTableOverflowEntry["length"]
+
+        is_utf16 = not val.isascii() if isinstance(val, str) else False
+        if is_utf16:
+            if isinstance(val, str):
+                encoded = []
+                for char in val:
+                    cp = ord(char)
+                    if cp <= 0xFFFF:
+                        encoded.extend(pack("<H", cp))
+                    else:
+                        cp -= 0x10000
+                        high = 0xD800 + (cp >> 10)
+                        low = 0xDC00 + (cp & 0x3FF)
+                        encoded.extend(pack("<H", high))
+                        encoded.extend(pack("<H", low))
+                s = bytes(encoded)
+            else:
+                s = val
+            l = len(s) // 2
+        else:
+            s = val.encode("utf-8") if isinstance(val, str) else val
+            l = len(s)
+
+        stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
+
+        if l > length:
+            offset = self._allocate_string_slot(len(s))
+            if stringTableEntry["length"] >= INVALID_LENGTH:
+                stringTableOverflowEntries[stringTableEntry["offset"]]["offset"] = (
+                    offset
+                )
+                stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
+            else:
+                stringTableEntry["length"] = INVALID_LENGTH
+                stringTableEntry["offset"] = len(stringTableOverflowEntries)
+                stringTableOverflowEntries.append({"offset": offset, "length": l})
+                self.getObj()["header"]["overflowStringCount"] = len(
+                    stringTableOverflowEntries
+                )
+        else:
+            stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
+            if isUTF16:
+                length *= 2
+
+        memcpy(stringStorage, s, offset, len(s))
+
+
     def setString(self, sid, val):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
 
@@ -294,6 +359,8 @@ class HBC85:
         else:
             s = val.encode("utf-8") if isinstance(val, str) else val
             l = len(s)
+
+        stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
 
         if l > length:
             offset = self._allocate_string_slot(len(s))
