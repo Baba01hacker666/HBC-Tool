@@ -274,21 +274,3 @@ def export(obj, f):
     import struct
     f.out.write(struct.pack("<I", total_size))
     f.seek(saved_pos)
-
-    # Write Overflowed Function Header at the tail and patch SmallFuncHeader pointers.
-    for overflowedFunctionHeader, smallHeaderPos in zip(
-        overflowedFunctionHeaders, overflowedFunctionHeaderPositions
-    ):
-        functionHeaderOffset = f.tell()
-        smallFunctionHeader = overflowedFunctionHeader["small"]
-        smallFunctionHeader["offset"] = functionHeaderOffset & 0xFFFFFF
-        smallFunctionHeader["functionName"] = (functionHeaderOffset >> 24) & 0xFF
-
-        for key in functionHeaderS:
-            write(f, overflowedFunctionHeader[key], functionHeaderS[key])
-
-        current_pos = f.tell()
-        f.seek(smallHeaderPos)
-        for key in smallFunctionHeaderS:
-            write(f, smallFunctionHeader[key], smallFunctionHeaderS[key])
-        f.seek(current_pos)
