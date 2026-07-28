@@ -265,12 +265,13 @@ class HBC91:
             offset = stringTableOverflowEntry["offset"]
             length = stringTableOverflowEntry["length"]
 
-        if isUTF16:
-            s = list(bytes.fromhex(val))
+        is_utf16 = not val.isascii() if isinstance(val, str) else False
+        if is_utf16:
+            s = val.encode("utf-16-le") if isinstance(val, str) else val
             l = len(s) // 2
         else:
-            l = len(val)
-            s = val.encode("utf-8")
+            s = val.encode("utf-8") if isinstance(val, str) else val
+            l = len(s)
 
         if l > length:
             offset = self._allocate_string_slot(len(s))
@@ -287,6 +288,7 @@ class HBC91:
                     stringTableOverflowEntries
                 )
         else:
+            stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
             if isUTF16:
                 length *= 2
 
