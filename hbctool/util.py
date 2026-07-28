@@ -44,36 +44,11 @@ class BitWriter(object):
         except ValueError:  # I/O operation on closed file.
             pass
 
-    def _writebit(self, bit, remaining=-1):
-        if remaining > -1:
-            self.accumulator |= bit << (remaining - 1)
-        else:
-            self.accumulator |= bit << (7 - self.bcount + self.remained)
-
-        self.bcount += 1
-
+    def writebits(self, v, n, remained=False):
+        self.accumulator |= (v & ((1 << n) - 1)) << self.bcount
+        self.bcount += n
         if self.bcount == 8:
             self.flush()
-
-    def _clearbits(self, remaining):
-        self.remained = remaining
-
-    def _writebyte(self, b):
-        if self.bcount:
-            raise RuntimeError("bcount is not zero.")
-        self.out.write(bytes((b,)))
-        self.write += 1
-
-    def writebits(self, v, n, remained=False):
-        i = n
-        while i > 0:
-            self._writebit(
-                (v & (1 << i - 1)) >> (i - 1), remaining=(i if remained else -1)
-            )
-            i -= 1
-
-        if remained:
-            self._clearbits(n)
 
     def writebytes(self, v, n):
         if n <= 0:
