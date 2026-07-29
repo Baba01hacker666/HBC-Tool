@@ -1,7 +1,7 @@
 package = "hbctool"
 project = "hbctool-cli"
 project_no_spaces = project.replace(" ", "")
-version = "0.17"
+version = "0.18"
 description = (
     "A command-line interface for disassembling and assembling " "the Hermes Bytecode"
 )

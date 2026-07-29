@@ -11,7 +11,7 @@
 <p align="center">
   <strong>A Hermes bytecode disassembler and assembler for React Native bundles.</strong>
   <br>
-  Originally created by <code>baba01hacker</code> and continued by <code>Doraemon cyber team</code>.
+  Originally created by <code>baba01hacker666</code> and continued by <code>Doraemon cyber team</code>.
 </p>
 
 ## Why hbctool
@@ -157,8 +157,7 @@ If the built wheel includes the compiled extension, it will be platform-tagged r
 
 ## Credits
 
-- Original work: `Kirlif bongtrop  ErbaZZ and Jusmistic `
-- Ongoing maintenance and remastering: `baba01hacker`
+- Created and maintained by `baba01hacker666`
 
 ## License
 
