@@ -1,6 +1,6 @@
 import pathlib
 import re
-import json
+import hbctool.compat_json as json
 
 basepath = pathlib.Path(__file__).parent.absolute()
 

@@ -1,6 +1,6 @@
 from .util import *
 import hbctool.hbc as hbcl
-import json
+import hbctool.compat_json as json
 import os
 import shutil
 import re

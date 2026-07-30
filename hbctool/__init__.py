@@ -105,6 +105,11 @@ def _build_parser():
         action="store_true",
         help="Enable verbose debug output and full tracebacks",
     )
+    disasm_parser.add_argument(
+        "--fast-json",
+        action="store_true",
+        help="Use orjson for faster JSON processing",
+    )
 
     asm_parser = subparsers.add_parser(
         "asm", aliases=["a"], help="Assemble Hermes Bytecode"
@@ -136,6 +141,11 @@ def _build_parser():
         action="store_true",
         help="Enable verbose debug output and full tracebacks",
     )
+    asm_parser.add_argument(
+        "--fast-json",
+        action="store_true",
+        help="Use orjson for faster JSON processing",
+    )
 
     return parser
 
@@ -143,6 +153,10 @@ def _build_parser():
 def main(argv=None):
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if getattr(args, "fast_json", False):
+        from hbctool import compat_json
+        compat_json.enable_orjson()
 
     try:
         if args.operation in ("disasm", "d"):
