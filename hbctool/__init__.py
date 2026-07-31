@@ -17,8 +17,20 @@ def _confirm_overwrite(path):
         return False
 
     abs_path = os.path.abspath(os.path.normpath(path))
-    if abs_path in ("/", os.path.expanduser("~"), os.getcwd()):
-        raise hasm.HASMError(f"Refusing to remove unsafe output directory: {path}")
+    protected_paths = [
+        os.path.abspath(os.sep),
+        os.path.abspath(os.path.expanduser("~")),
+        os.path.abspath(os.getcwd()),
+    ]
+
+    for p in protected_paths:
+        try:
+            if os.path.commonpath([abs_path, p]) == abs_path:
+                raise hasm.HASMError(
+                    f"Refusing to remove unsafe output directory: {path}"
+                )
+        except ValueError:
+            pass
 
     if os.path.islink(path):
         raise hasm.HASMError(f"Refusing to remove symbolic link: {path}")
@@ -43,7 +55,9 @@ def disasm(hbcfile, hasmpath, use_old=False, verbose=False):
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
     if verbose:
-        print(f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}")
+        print(
+            f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}"
+        )
 
     overwrite = _confirm_overwrite(hasmpath)
     hasm.dump(hbco, hasmpath, force=overwrite)
@@ -59,7 +73,9 @@ def asm(hasmpath, hbcfile, use_old=False, verbose=False):
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
     if verbose:
-        print(f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}")
+        print(
+            f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}"
+        )
 
     with open(hbcfile, "wb") as f:
         hbc.dump(hbco, f)
@@ -75,7 +91,10 @@ def _build_parser():
         "--version", action="version", version=f"{metadata.project} {metadata.version}"
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable verbose debug output and full tracebacks"
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug output and full tracebacks",
     )
 
     subparsers = parser.add_subparsers(dest="operation")
@@ -156,16 +175,28 @@ def main(argv=None):
 
     if getattr(args, "fast_json", False):
         from hbctool import compat_json
+
         compat_json.enable_orjson()
 
     try:
         if args.operation in ("disasm", "d"):
-            disasm(args.hbc_file, args.hasm_path, use_old=args.use_old, verbose=args.verbose)
+            disasm(
+                args.hbc_file,
+                args.hasm_path,
+                use_old=args.use_old,
+                verbose=args.verbose,
+            )
         elif args.operation in ("asm", "a"):
-            asm(args.hasm_path, args.hbc_file, use_old=args.use_old, verbose=args.verbose)
+            asm(
+                args.hasm_path,
+                args.hbc_file,
+                use_old=args.use_old,
+                verbose=args.verbose,
+            )
     except Exception as exc:
         if getattr(args, "verbose", False):
             import traceback
+
             traceback.print_exc()
         else:
             print(f"[!] {exc}", file=sys.stderr)
