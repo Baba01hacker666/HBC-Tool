@@ -541,14 +541,7 @@ static PyObject* fu_to_double(PyObject*, PyObject* args) {
 }
 
 static PyObject* list_from_bytes(const uint8_t* p, Py_ssize_t n) {
-    PyObject* out = PyList_New(n);
-    if (!out) return nullptr;
-    for (Py_ssize_t i = 0; i < n; ++i) {
-        PyObject* v = PyLong_FromUnsignedLong((unsigned long)p[i]);
-        if (!v) { Py_DECREF(out); return nullptr; }
-        PyList_SET_ITEM(out, i, v);
-    }
-    return out;
+    return PyBytes_FromStringAndSize((const char*)p, n);
 }
 
 static PyObject* fu_from_uint8(PyObject*, PyObject* args) {
