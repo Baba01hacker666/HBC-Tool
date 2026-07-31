@@ -408,7 +408,10 @@ def to_uint16(buf):
             return _fastutil.to_uint16(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 2 bytes")
-    return unpack("<H", bytes(buf[:2]))[0]
+    try:
+        return buf[0] | (buf[1] << 8)
+    except IndexError:
+        raise StructError("unpack requires a buffer of 2 bytes")
 
 
 def to_uint32(buf):
@@ -417,7 +420,10 @@ def to_uint32(buf):
             return _fastutil.to_uint32(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 4 bytes")
-    return unpack("<L", bytes(buf[:4]))[0]
+    try:
+        return buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24)
+    except IndexError:
+        raise StructError("unpack requires a buffer of 4 bytes")
 
 
 def to_int8(buf):
@@ -426,7 +432,11 @@ def to_int8(buf):
             return _fastutil.to_int8(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 1 bytes")
-    return unpack("<b", bytes([buf[0]]))[0]
+    try:
+        val = buf[0]
+        return val if val < 0x80 else val - 0x100
+    except IndexError:
+        raise StructError("unpack requires a buffer of 1 bytes")
 
 
 def to_int32(buf):
@@ -435,7 +445,11 @@ def to_int32(buf):
             return _fastutil.to_int32(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 4 bytes")
-    return unpack("<i", bytes(buf[:4]))[0]
+    try:
+        val = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24)
+        return val if val < 0x80000000 else val - 0x100000000
+    except IndexError:
+        raise StructError("unpack requires a buffer of 4 bytes")
 
 
 def to_double(buf):
@@ -444,7 +458,10 @@ def to_double(buf):
             return _fastutil.to_double(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 8 bytes")
-    return unpack("<d", bytes(buf[:8]))[0]
+    try:
+        return unpack("<d", bytes(buf[:8]))[0]
+    except (IndexError, StructError):
+        raise StructError("unpack requires a buffer of 8 bytes")
 
 
 # Packing
