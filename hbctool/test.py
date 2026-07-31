@@ -1,10 +1,10 @@
 import unittest
 import io
-from hbctool.util import *
-from hbctool.hbc.hbc76.test import *
-from hbctool.hbc.hbc74.test import *
-from hbctool.hbc.hbc62.test import *
-from hbctool.hbc.hbc59.test import *
+from hbctool.util import BitReader, BitWriter, read, write
+from hbctool.hbc.hbc76.test import TestHBC76, TestParser76
+from hbctool.hbc.hbc74.test import TestHBC74, TestParser74
+from hbctool.hbc.hbc62.test import TestHBC62, TestParser62
+from hbctool.hbc.hbc59.test import TestHBC59, TestParser59
 import pathlib
 
 basepath = pathlib.Path(__file__).parent.absolute()
