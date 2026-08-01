@@ -470,37 +470,37 @@ def to_double(buf):
 def from_uint8(val):
     if _fastutil is not None:
         return _fastutil.from_uint8(val)
-    return [val]
+    return bytes([val])
 
 
 def from_uint16(val):
     if _fastutil is not None:
         return _fastutil.from_uint16(val)
-    return list(pack("<H", val))
+    return pack("<H", val)
 
 
 def from_uint32(val):
     if _fastutil is not None:
         return _fastutil.from_uint32(val)
-    return list(pack("<L", val))
+    return pack("<L", val)
 
 
 def from_int8(val):
     if _fastutil is not None:
         return _fastutil.from_int8(val)
-    return list(pack("<b", val))
+    return pack("<b", val)
 
 
 def from_int32(val):
     if _fastutil is not None:
         return _fastutil.from_int32(val)
-    return list(pack("<i", val))
+    return pack("<i", val)
 
 
 def from_double(val):
     if _fastutil is not None:
         return _fastutil.from_double(val)
-    return list(pack("<d", val))
+    return pack("<d", val)
 
 
 # Buf Function

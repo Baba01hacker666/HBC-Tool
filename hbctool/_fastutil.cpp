@@ -540,29 +540,22 @@ static PyObject* fu_to_double(PyObject*, PyObject* args) {
     return PyFloat_FromDouble(d);
 }
 
-static PyObject* list_from_bytes(const uint8_t* p, Py_ssize_t n) {
-    PyObject* out = PyList_New(n);
-    if (!out) return nullptr;
-    for (Py_ssize_t i = 0; i < n; ++i) {
-        PyObject* v = PyLong_FromUnsignedLong((unsigned long)p[i]);
-        if (!v) { Py_DECREF(out); return nullptr; }
-        PyList_SET_ITEM(out, i, v);
-    }
-    return out;
+static PyObject* bytes_from_bytes(const uint8_t* p, Py_ssize_t n) {
+    return PyBytes_FromStringAndSize((const char*)p, n);
 }
 
 static PyObject* fu_from_uint8(PyObject*, PyObject* args) {
     unsigned long v;
     if (!PyArg_ParseTuple(args, "k", &v)) return nullptr;
     uint8_t b = (uint8_t)(v & 0xFF);
-    return list_from_bytes(&b, 1);
+    return bytes_from_bytes(&b, 1);
 }
 
 static PyObject* fu_from_uint16(PyObject*, PyObject* args) {
     unsigned long v;
     if (!PyArg_ParseTuple(args, "k", &v)) return nullptr;
     uint8_t b[2] = {(uint8_t)(v & 0xFF), (uint8_t)((v >> 8) & 0xFF)};
-    return list_from_bytes(b, 2);
+    return bytes_from_bytes(b, 2);
 }
 
 static PyObject* fu_from_uint32(PyObject*, PyObject* args) {
@@ -574,7 +567,7 @@ static PyObject* fu_from_uint32(PyObject*, PyObject* args) {
         (uint8_t)((v >> 16) & 0xFF),
         (uint8_t)((v >> 24) & 0xFF)
     };
-    return list_from_bytes(b, 4);
+    return bytes_from_bytes(b, 4);
 }
 
 static PyObject* fu_from_int8(PyObject*, PyObject* args) {
@@ -582,7 +575,7 @@ static PyObject* fu_from_int8(PyObject*, PyObject* args) {
     if (!PyArg_ParseTuple(args, "l", &v)) return nullptr;
     int8_t i = (int8_t)v;
     uint8_t b = (uint8_t)i;
-    return list_from_bytes(&b, 1);
+    return bytes_from_bytes(&b, 1);
 }
 
 static PyObject* fu_from_int32(PyObject*, PyObject* args) {
@@ -595,7 +588,7 @@ static PyObject* fu_from_int32(PyObject*, PyObject* args) {
         (uint8_t)((u >> 16) & 0xFF),
         (uint8_t)((u >> 24) & 0xFF)
     };
-    return list_from_bytes(b, 4);
+    return bytes_from_bytes(b, 4);
 }
 
 static PyObject* fu_from_double(PyObject*, PyObject* args) {
@@ -603,7 +596,7 @@ static PyObject* fu_from_double(PyObject*, PyObject* args) {
     if (!PyArg_ParseTuple(args, "d", &d)) return nullptr;
     uint8_t b[8];
     memcpy(b, &d, 8);
-    return list_from_bytes(b, 8);
+    return bytes_from_bytes(b, 8);
 }
 
 static PyObject* fu_memcpy(PyObject*, PyObject* args) {
