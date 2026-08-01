@@ -29,7 +29,7 @@ def write_func(f, func, i, hbc):
         f"Function<{functionName}>{i}({paramCount} params, {registerCount} registers, {symbolCount} symbols):\n"
     )
     for opcode, operands in insts:
-        f.write(f"\t{opcode.ljust(20,' ')}\t")
+        f.write(f"\t{opcode.ljust(20, ' ')}\t")
         o = []
         ss = []
         for ii, v in enumerate(operands):
@@ -63,8 +63,18 @@ def _write_json_file(path, obj, indent=None):
 
 def dump(hbc, path, force=False):
     abs_path = os.path.abspath(os.path.normpath(path))
-    if abs_path in ("/", os.path.expanduser("~"), os.getcwd()):
-        raise HASMError(f"Refusing to remove unsafe output directory: {path}")
+    protected_paths = [
+        os.path.abspath(os.sep),
+        os.path.abspath(os.path.expanduser("~")),
+        os.path.abspath(os.getcwd()),
+    ]
+
+    for p in protected_paths:
+        try:
+            if os.path.commonpath([abs_path, p]) == abs_path:
+                raise HASMError(f"Refusing to remove unsafe output directory: {path}")
+        except ValueError:
+            pass
 
     if os.path.islink(path):
         raise HASMError(f"Refusing to remove symbolic link: {path}")
@@ -309,9 +319,8 @@ def _functions_equal(current_func, parsed_func):
     for (current_opcode, current_operands), (parsed_opcode, parsed_operands) in zip(
         current_insts, parsed_insts
     ):
-        if (
-            current_opcode != parsed_opcode
-            or len(current_operands) != len(parsed_operands)
+        if current_opcode != parsed_opcode or len(current_operands) != len(
+            parsed_operands
         ):
             return False
         for current_operand, parsed_operand in zip(current_operands, parsed_operands):
