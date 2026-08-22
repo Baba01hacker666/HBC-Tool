@@ -16,24 +16,7 @@ def _confirm_overwrite(path):
     if not os.path.exists(path):
         return False
 
-    abs_path = os.path.abspath(os.path.normpath(path))
-    protected_paths = [
-        os.path.abspath(os.sep),
-        os.path.abspath(os.path.expanduser("~")),
-        os.path.abspath(os.getcwd()),
-    ]
-
-    for p in protected_paths:
-        try:
-            if os.path.commonpath([abs_path, p]) == abs_path:
-                raise hasm.HASMError(
-                    f"Refusing to remove unsafe output directory: {path}"
-                )
-        except ValueError:
-            pass
-
-    if os.path.islink(path):
-        raise hasm.HASMError(f"Refusing to remove symbolic link: {path}")
+    hasm.ensure_path_removable(path)
 
     c = input(f"'{path}' exists. Do you want to remove it ? (y/n): ").lower().strip()
     if c[:1] != "y":
@@ -42,7 +25,7 @@ def _confirm_overwrite(path):
     return True
 
 
-def disasm(hbcfile, hasmpath, use_old=False, verbose=False):
+def disasm(hbcfile, hasmpath, verbose=False):
     if not os.path.isfile(hbcfile):
         raise FileNotFoundError(f"HBC file not found: {hbcfile}")
 
@@ -64,7 +47,7 @@ def disasm(hbcfile, hasmpath, use_old=False, verbose=False):
     print("[*] Done")
 
 
-def asm(hasmpath, hbcfile, use_old=False, verbose=False):
+def asm(hasmpath, hbcfile, verbose=False):
     print(f"[*] Assemble '{hasmpath}' to '{hbcfile}' path")
     hbco = hasm.load(hasmpath)
 
@@ -112,13 +95,6 @@ def _build_parser():
         help="Target HASM directory path",
     )
     disasm_parser.add_argument(
-        "-old",
-        "--use-old-string-method",
-        action="store_true",
-        dest="use_old",
-        help="Use legacy manual surrogate pair string encoding loop",
-    )
-    disasm_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -148,13 +124,6 @@ def _build_parser():
         help="Target HBC file",
     )
     asm_parser.add_argument(
-        "-old",
-        "--use-old-string-method",
-        action="store_true",
-        dest="use_old",
-        help="Use legacy manual surrogate pair string encoding loop",
-    )
-    asm_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -180,19 +149,9 @@ def main(argv=None):
 
     try:
         if args.operation in ("disasm", "d"):
-            disasm(
-                args.hbc_file,
-                args.hasm_path,
-                use_old=args.use_old,
-                verbose=args.verbose,
-            )
+            disasm(args.hbc_file, args.hasm_path, verbose=args.verbose)
         elif args.operation in ("asm", "a"):
-            asm(
-                args.hasm_path,
-                args.hbc_file,
-                use_old=args.use_old,
-                verbose=args.verbose,
-            )
+            asm(args.hasm_path, args.hbc_file, verbose=args.verbose)
     except Exception as exc:
         if getattr(args, "verbose", False):
             import traceback

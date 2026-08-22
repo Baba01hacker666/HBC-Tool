@@ -82,11 +82,11 @@ class BitWriter(object):
             alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0)
         ):
             raise ValueError("Support alignment as many as 8 bytes.")
-        l = self.tell()
-        if l % alignment == 0:
+        pos = self.tell()
+        if pos % alignment == 0:
             return
 
-        b = alignment - (l % alignment)
+        b = alignment - (pos % alignment)
         self.writeall([0] * (b))
 
     def writeall(self, bs):
@@ -205,12 +205,12 @@ class BitReader(object):
             alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0)
         ):
             raise ValueError("Support alignment as many as 8 bytes.")
-        l = self.tell()
-        if l % alignment == 0:
+        pos = self.tell()
+        if pos % alignment == 0:
             return
 
-        b = alignment - (l % alignment)
-        self.seek(l + b)
+        b = alignment - (pos % alignment)
+        self.seek(pos + b)
 
     def readall(self):
         self._ensure_cache(float("inf"))
@@ -252,11 +252,11 @@ def readbits(f, bits=8):
     s = 0
 
     if f.bcount % 8 != 0 and bits >= f.bcount:
-        l = f.bcount
-        b = f.readbits(l)
+        nbits = f.bcount
+        b = f.readbits(nbits)
         x |= (b & 0xFF) << s
-        s += l
-        bits -= l
+        s += nbits
+        bits -= nbits
 
     if bits >= 8 and not f.bcount:
         n = bits // 8
@@ -348,27 +348,23 @@ def writebits(f, v, bits=8):
         writeuint(f, v, bits)
         return
 
-    s = 0
     if f.bcount % 8 != 0 and bits >= 8 - f.bcount:
-        l = 8 - f.bcount
-        f.writebits(v & ((1 << l) - 1), l)
-        v = v >> l
-        s += l
-        bits -= l
+        nbits = 8 - f.bcount
+        f.writebits(v & ((1 << nbits) - 1), nbits)
+        v = v >> nbits
+        bits -= nbits
 
     if bits >= 8 and not f.bcount:
         n = bits // 8
         if n > 0:
             writeuint(f, v & ((1 << (n * 8)) - 1), n * 8)
             v = v >> (n * 8)
-            s += n * 8
             bits -= n * 8
 
     r = bits % 8
     if r != 0:
         f.writebits(v & ((1 << bits) - 1), r, remained=True)
         v = v >> r
-        s += r
 
 
 def write(f, v, format):

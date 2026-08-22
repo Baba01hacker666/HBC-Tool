@@ -1,4 +1,3 @@
-from .util import *
 import hbctool.hbc as hbcl
 import hbctool.compat_json as json
 import os
@@ -10,14 +9,6 @@ class HASMError(ValueError):
     pass
 
 
-FUNCTION_HEADER_RE = re.compile(
-    r"^Function(?:<.*?>)?([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):$",
-    re.MULTILINE,
-)
-FUNCTION_BLOCK_RE = re.compile(
-    r"Function(?:<.*?>)?([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
-    re.DOTALL,
-)
 FUNCTION_LINE_RE = re.compile(
     r"^Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):$"
 )
@@ -61,7 +52,8 @@ def _write_json_file(path, obj, indent=None):
         json.dump(obj, f, indent=indent, ensure_ascii=False)
 
 
-def dump(hbc, path, force=False):
+def ensure_path_removable(path):
+    """Refuse output paths that must never be deleted by hbctool."""
     abs_path = os.path.abspath(os.path.normpath(path))
     protected_paths = [
         os.path.abspath(os.sep),
@@ -78,6 +70,10 @@ def dump(hbc, path, force=False):
 
     if os.path.islink(path):
         raise HASMError(f"Refusing to remove symbolic link: {path}")
+
+
+def dump(hbc, path, force=False):
+    ensure_path_removable(path)
 
     if os.path.exists(path):
         if not force:
@@ -105,83 +101,6 @@ def dump(hbc, path, force=False):
     with open(os.path.join(path, "instruction.hasm"), "w", encoding="utf-8") as f:
         for i in range(functionCount):
             write_func(f, hbc.getFunction(i), i, hbc)
-
-
-def read_all_func(hasm, hbc):
-    functionCount = hbc.getFunctionCount()
-    rs = [""] * functionCount
-
-    for m in FUNCTION_HEADER_RE.finditer(hasm):
-        fid = int(m.group(1))
-
-        if fid < 0 or fid >= functionCount:
-            raise HASMError(
-                f"Invalid function ID {fid}; expected in range [0, {functionCount})."
-            )
-
-        end_pos = hasm.find("\nEndFunction", m.start())
-        if end_pos == -1:
-            raise HASMError(f"Malformed function block for function {fid}.")
-
-        rs[fid] = hasm[m.start() : end_pos + len("\nEndFunction")]
-
-    if any(not func_asm for func_asm in rs):
-        raise HASMError("Malformed HASM: missing function blocks.")
-
-    return rs
-
-
-def read_func(func_asms, i):
-    func_asm = func_asms[i]
-
-    m = FUNCTION_BLOCK_RE.search(func_asm)
-    if not m:
-        raise HASMError(f"Malformed function block for function {i}.")
-
-    functionName = m.group(1)
-    paramCount = int(m.group(2))
-    registerCount = int(m.group(3))
-    symbolCount = int(m.group(4))
-    insts_asm = m.group(5)
-
-    inst_lines = insts_asm.split("\n")
-
-    insts = []
-
-    for inst_line in inst_lines:
-        inst_line = inst_line.strip()
-
-        if len(inst_line) == 0 or inst_line.startswith(";"):
-            continue
-
-        inst_words = inst_line.split()
-        if not inst_words:
-            continue
-
-        opcode = inst_words[0]
-
-        operands = []
-        for oper in inst_words[1:]:
-            cleaned = oper.replace(",", "")
-            if ":" not in cleaned:
-                raise HASMError(f"Malformed operand '{oper}' in function {i}.")
-            oper_t, val = cleaned.split(":", 1)
-
-            try:
-                if oper_t == "Double":
-                    val = float(val)
-                else:
-                    val = int(val)
-            except ValueError as exc:
-                raise HASMError(
-                    f"Invalid operand value '{val}' ({oper_t}) in function {i}."
-                ) from exc
-
-            operands.append((oper_t, False, val))
-
-        insts.append((opcode, operands))
-
-    return functionName, paramCount, registerCount, symbolCount, insts, None
 
 
 def _strip_inline_comment(line):

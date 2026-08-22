@@ -1,6 +1,6 @@
 import importlib
 
-from hbctool.util import *
+from hbctool.util import BitReader, BitWriter, read
 
 MAGIC = 2240826417119764422
 PLAIN_JS_PREFIX_MAGIC = int.from_bytes(b"var __BU", "little")

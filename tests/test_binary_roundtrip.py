@@ -253,7 +253,6 @@ class TestBug3_FileLengthNotUpdated:
 
     def test_file_length_field_position_is_correct(self):
         """fileLength must sit at byte offset 32 in the exported header (magic=8, version=4, sourceHash=20)."""
-        hbc_obj = _load_hbc()
         orig = _load_orig()
         # The original file's fileLength in the header
         orig_fl = struct.unpack_from("<I", orig, 32)[0]

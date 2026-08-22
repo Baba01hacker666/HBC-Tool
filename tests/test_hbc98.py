@@ -1,5 +1,3 @@
-import os
-import pytest
 import hbctool
 from hbctool.hbc import HBC, HBC98
 

@@ -1,7 +1,6 @@
 from hbctool.util import *
 from .parser import parse, export, INVALID_LENGTH
 from .translator import disassemble, assemble
-from struct import pack, unpack
 
 NullTag = 0
 TrueTag = 1 << 4
@@ -43,28 +42,6 @@ class HBC97:
 
     def getStringCount(self):
         return self.getHeader()["stringCount"]
-
-    def getString_old(self, sid):
-        assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
-
-        stringTableEntry = self.getObj()["stringTableEntries"][sid]
-        stringStorage = self.getObj()["stringStorage"]
-        stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
-
-        isUTF16 = stringTableEntry["isUTF16"]
-        offset = stringTableEntry["offset"]
-        length = stringTableEntry["length"]
-
-        if length >= INVALID_LENGTH:
-            stringTableOverflowEntry = stringTableOverflowEntries[offset]
-            offset = stringTableOverflowEntry["offset"]
-            length = stringTableOverflowEntry["length"]
-
-        if isUTF16:
-            length *= 2
-
-        s = bytes(stringStorage[offset : offset + length])
-        return s.hex() if isUTF16 else s.decode("utf-8"), (isUTF16, offset, length)
 
     def getString(self, sid):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
@@ -175,170 +152,6 @@ class HBC97:
             self._shift_function_offsets(delta)
 
         return offset
-
-    def setString_old(self, sid, val):
-        assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
-
-        from .parser import INVALID_LENGTH
-
-        self._string_id_cache = {}
-        self._last_string_id_searched = -1
-
-        stringTableEntry = self.getObj()["stringTableEntries"][sid]
-        stringStorage = self.getObj()["stringStorage"]
-        stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
-
-        isUTF16 = stringTableEntry["isUTF16"] == 1
-        offset = stringTableEntry["offset"]
-        length = stringTableEntry["length"]
-
-        if length >= INVALID_LENGTH:
-            stringTableOverflowEntry = stringTableOverflowEntries[offset]
-            offset = stringTableOverflowEntry["offset"]
-            length = stringTableOverflowEntry["length"]
-
-        is_utf16 = isUTF16 or (not val.isascii() if isinstance(val, str) else False)
-        if is_utf16:
-            if isinstance(val, str):
-                encoded = []
-                for char in val:
-                    cp = ord(char)
-                    if cp <= 0xFFFF:
-                        encoded.extend(pack("<H", cp))
-                    else:
-                        cp -= 0x10000
-                        high = 0xD800 + (cp >> 10)
-                        low = 0xDC00 + (cp & 0x3FF)
-                        encoded.extend(pack("<H", high))
-                        encoded.extend(pack("<H", low))
-                s = bytes(encoded)
-            else:
-                s = val
-            l = len(s) // 2
-        else:
-            s = val.encode("utf-8") if isinstance(val, str) else val
-            l = len(s)
-
-        if is_utf16 == isUTF16 and l == length:
-            current_length = length * 2 if isUTF16 else length
-            if bytes(stringStorage[offset : offset + current_length]) == s:
-                return
-
-        stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
-
-        if l > length:
-            offset = self._allocate_string_slot(len(s))
-            if stringTableEntry["length"] >= INVALID_LENGTH:
-                stringTableOverflowEntries[stringTableEntry["offset"]]["offset"] = (
-                    offset
-                )
-                stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
-            else:
-                stringTableEntry["length"] = INVALID_LENGTH
-                stringTableEntry["offset"] = len(stringTableOverflowEntries)
-                stringTableOverflowEntries.append({"offset": offset, "length": l})
-                self.getObj()["header"]["overflowStringCount"] = len(
-                    stringTableOverflowEntries
-                )
-        else:
-            stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
-            if isUTF16:
-                length *= 2
-
-        memcpy(stringStorage, s, offset, len(s))
-
-        if sid < self.getObj()["header"]["identifierCount"]:
-            self.getObj()["identifierHashes"][sid] = hash_string(val)
-
-    def getFunction(self, fid, disasm=True):
-        assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"
-
-        functionHeader = self.getObj()["functionHeaders"][fid]
-        offset = functionHeader["offset"]
-        paramCount = functionHeader["paramCount"]
-        registerCount = functionHeader["frameSize"]
-        symbolCount = functionHeader.get("environmentSize", functionHeader.get("readCacheSize", 0))
-        bytecodeSizeInBytes = functionHeader["bytecodeSizeInBytes"]
-        functionName = functionHeader["functionName"]
-
-        instOffset = self.getObj()["instOffset"]
-        start = offset - instOffset
-        end = start + bytecodeSizeInBytes
-        bc = self.getObj()["inst"][start:end]
-        insts = bc
-        if disasm:
-            insts = disassemble(bc)
-
-        functionNameStr, _ = self.getString(functionName)
-
-        return (
-            functionNameStr,
-            paramCount,
-            registerCount,
-            symbolCount,
-            insts,
-            functionHeader,
-        )
-
-    def setFunction(self, fid, func, disasm=True, offset_shift=0, string_id_cache=None):
-        assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"
-
-        functionName, paramCount, registerCount, symbolCount, insts, _ = func
-
-        functionHeader = self.getObj()["functionHeaders"][fid]
-
-        functionHeader["paramCount"] = paramCount
-        functionHeader["frameSize"] = registerCount
-        if "environmentSize" in functionHeader:
-            functionHeader["environmentSize"] = symbolCount
-
-        functionHeader["functionName"] = self.getStringId(
-            functionName, string_id_cache=string_id_cache
-        )
-
-        offset = functionHeader["offset"]
-        bytecodeSizeInBytes = functionHeader["bytecodeSizeInBytes"]
-
-        instOffset = self.getObj()["instOffset"]
-        start = offset - instOffset + offset_shift
-
-        bc = insts
-
-        if disasm:
-            bc = assemble(insts)
-
-        if len(bc) > bytecodeSizeInBytes:
-            self.getObj()["inst"][start : start + bytecodeSizeInBytes] = bc
-        else:
-            memcpy(self.getObj()["inst"], bc, start, len(bc))
-            if len(bc) < bytecodeSizeInBytes:
-                del self.getObj()["inst"][start + len(bc) : start + bytecodeSizeInBytes]
-
-        functionHeader["bytecodeSizeInBytes"] = len(bc)
-        return len(bc) - bytecodeSizeInBytes
-
-    def _rebuild_function_offsets(self):
-        function_headers = self.getObj()["functionHeaders"]
-        chunks = []
-        for function_header in function_headers:
-            offset = function_header["offset"]
-            bytecode_size = function_header["bytecodeSizeInBytes"]
-            start = offset - self.getObj()["instOffset"]
-            end = start + bytecode_size
-            chunks.append(self.getObj()["inst"][start:end])
-
-        current_offset = self.getObj()["instOffset"]
-        new_inst = []
-        for i, function_header in enumerate(function_headers):
-            function_header["offset"] = current_offset
-            chunk = chunks[i]
-            new_inst.extend(chunk)
-            current_offset += len(chunk)
-
-        self.getObj()["inst"] = new_inst
-
-    def export(self, f):
-        export(self.getObj(), f)
 
     def setString(self, sid, val):
         assert sid >= 0 and sid < self.getStringCount(), "Invalid string ID"
