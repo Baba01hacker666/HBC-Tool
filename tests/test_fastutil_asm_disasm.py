@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 FASTUTIL_AVAILABLE = importlib.util.find_spec("hbctool._fastutil") is not None
 
 

@@ -1,4 +1,5 @@
 import os
+
 import hbctool
 
 HBC96_BUNDLE = "Testfiles/index.android.bundle"

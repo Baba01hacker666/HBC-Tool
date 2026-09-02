@@ -32,7 +32,6 @@ def addOp(name, operands):
     print(hex(opcode)[2:], name)
     json_op[name] = operands
     opcode = opcode + 1
-    pass
 
 
 # Read each line
@@ -69,19 +68,7 @@ for line in lines:
         addOp(f"{name}Long", jmp_operand[f"{num_op}Long"])
 
     # NOTE : Skip all assert
-    elif line.startswith("ASSERT_"):
-        pass
-
-    # NOTE : Skip this
-    elif line.startswith("DEFINE_RET_TARGET"):
-        pass
-
-    # NOTE : Also skip this
-    elif line.startswith("DEFINE_OPERAND_TYPE"):
-        pass
-
-    # NOTE : Skip all comments
-    elif (
+    elif line.startswith("ASSERT_") or line.startswith("DEFINE_RET_TARGET") or line.startswith("DEFINE_OPERAND_TYPE") or (
         line.startswith("#")
         or line.startswith("//")
         or line.startswith("/*")

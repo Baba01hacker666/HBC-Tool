@@ -2,7 +2,8 @@ import pathlib
 import hbctool.compat_json as json
 import importlib.util
 import os
-from hbctool.util import *
+
+from hbctool.util import *  # noqa: F403
 
 basepath = pathlib.Path(__file__).parent.absolute()
 
@@ -59,7 +60,7 @@ def disassemble(bc):
 
         req_size = 0
         for oper_t in operand_ts:
-            if oper_t.endswith(":S"):
+            if oper_t.endswith(":S"):  # noqa: FURB188
                 oper_t = oper_t[:-2]
             req_size += operand_type[oper_t][0]
 

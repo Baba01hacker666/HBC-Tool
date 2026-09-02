@@ -2,7 +2,8 @@ import pathlib
 import hbctool.compat_json as json
 import importlib.util
 import os
-from hbctool.util import *
+
+from hbctool.util import *  # noqa: F403
 
 basepath = pathlib.Path(__file__).parent.absolute()
 

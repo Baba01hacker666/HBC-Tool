@@ -1,6 +1,7 @@
-from hbctool.util import *
-from .parser import parse, export, INVALID_LENGTH
-from .translator import disassemble, assemble
+from hbctool.util import *  # noqa: F403
+
+from .parser import INVALID_LENGTH, export, parse
+from .translator import assemble, disassemble
 
 NullTag = 0
 TrueTag = 1 << 4
@@ -92,30 +93,43 @@ class HBC97:
                 self._last_string_id_searched = i
                 continue
 
-        isUTF16 = 0
-        s = string_value.encode("utf-8")
-        l = len(s)
+        is_utf16 = not string_value.isascii()
+        if is_utf16:
+            s = string_value.encode("utf-16-le", errors="surrogatepass")
+            str_length = len(s) // 2
+        else:
+            s = string_value.encode("utf-8")
+            str_length = len(s)
 
         offset = self._allocate_string_slot(len(s))
 
         stringTableEntry = {
-            "isUTF16": isUTF16,
+            "isUTF16": 1 if is_utf16 else 0,
         }
 
         stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
-        if l >= INVALID_LENGTH:
+        if str_length >= INVALID_LENGTH:
             stringTableEntry["length"] = INVALID_LENGTH
             stringTableEntry["offset"] = len(stringTableOverflowEntries)
-            stringTableOverflowEntries.append({"offset": offset, "length": l})
+            stringTableOverflowEntries.append({"offset": offset, "length": str_length})
             self.getObj()["header"]["overflowStringCount"] = len(
                 stringTableOverflowEntries
             )
         else:
-            stringTableEntry["length"] = l
+            stringTableEntry["length"] = str_length
             stringTableEntry["offset"] = offset
 
         self.getObj()["stringTableEntries"].append(stringTableEntry)
         self.getObj()["header"]["stringCount"] += 1
+
+        if "stringKinds" in self.getObj():
+            stringKinds = self.getObj()["stringKinds"]
+            if stringKinds and (stringKinds[-1] & 1 == 0):
+                stringKinds[-1] += 1 << 1
+            else:
+                stringKinds.append(1 << 1)
+            if "stringKindCount" in self.getObj().get("header", {}):
+                self.getObj()["header"]["stringKindCount"] = len(stringKinds)
 
         stringStorage = self.getObj()["stringStorage"]
         from hbctool.util import memcpy
@@ -187,26 +201,42 @@ class HBC97:
             if bytes(stringStorage[offset : offset + current_length]) == s:
                 return
 
+                old_byte_len = length * 2 if isUTF16 else length
+        new_byte_len = len(s)
+
         stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
 
-        if l > length:
-            offset = self._allocate_string_slot(len(s))
+        if new_byte_len > old_byte_len:
+            offset = self._allocate_string_slot(new_byte_len)
             if stringTableEntry["length"] >= INVALID_LENGTH:
                 stringTableOverflowEntries[stringTableEntry["offset"]]["offset"] = (
                     offset
                 )
                 stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
-            else:
+            elif l >= INVALID_LENGTH:
                 stringTableEntry["length"] = INVALID_LENGTH
                 stringTableEntry["offset"] = len(stringTableOverflowEntries)
                 stringTableOverflowEntries.append({"offset": offset, "length": l})
-                self.getObj()["header"]["overflowStringCount"] = len(
-                    stringTableOverflowEntries
-                )
+                if "overflowStringCount" in self.getObj().get("header", {}):
+                    self.getObj()["header"]["overflowStringCount"] = len(
+                        stringTableOverflowEntries
+                    )
+            else:
+                stringTableEntry["length"] = l
+                stringTableEntry["offset"] = offset
         else:
-            stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
-            if isUTF16:
-                length *= 2
+            if stringTableEntry["length"] >= INVALID_LENGTH:
+                stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
+            elif l >= INVALID_LENGTH:
+                stringTableEntry["length"] = INVALID_LENGTH
+                stringTableEntry["offset"] = len(stringTableOverflowEntries)
+                stringTableOverflowEntries.append({"offset": offset, "length": l})
+                if "overflowStringCount" in self.getObj().get("header", {}):
+                    self.getObj()["header"]["overflowStringCount"] = len(
+                        stringTableOverflowEntries
+                    )
+            else:
+                stringTableEntry["length"] = l
 
         memcpy(stringStorage, s, offset, len(s))
 

@@ -24,7 +24,7 @@ def _fixture(*parts, required=True):
 
 class TestHBC62(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestHBC62, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.hbc = hbcl.load(open(_fixture("index.android.bundle"), "rb"))
         # self.objdump = open(f"{basepath}/example/objdump.out", "r").read()
         pretty_fixture = _fixture("pretty.out", required=False)
