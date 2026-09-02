@@ -1,4 +1,3 @@
-import json
 import pathlib
 import re
 import hbctool.compat_json as json

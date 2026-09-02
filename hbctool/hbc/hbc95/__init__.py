@@ -1,7 +1,7 @@
 
 from struct import unpack
 
-from hbctool.util import memcpy
+from hbctool.util import hash_string, memcpy
 
 from .parser import INVALID_LENGTH, export, parse
 from .translator import assemble, disassemble
