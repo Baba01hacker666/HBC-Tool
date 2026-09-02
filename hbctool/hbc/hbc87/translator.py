@@ -1,3 +1,5 @@
+import pathlib
+import hbctool.compat_json as json
 import importlib.util
 import json
 import os

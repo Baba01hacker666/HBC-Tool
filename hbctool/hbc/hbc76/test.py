@@ -1,12 +1,9 @@
-import json
-import pathlib
-import re
-import unittest
-
-from hbctool import hasm
-from hbctool import hbc as hbcl
-
+from hbctool import hbc as hbcl, hasm
 from .translator import assemble, disassemble
+import unittest
+import re
+import pathlib
+import hbctool.compat_json as json
 
 basepath = pathlib.Path(__file__).parent.absolute()
 repo_root = basepath.parents[2]

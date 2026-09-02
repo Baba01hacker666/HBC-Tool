@@ -1,11 +1,10 @@
-import json
 import os
 import re
 import shutil
 
+import hbctool.compat_json as json
 import hbctool.hbc as hbcl
-
-from .util import *  # noqa: F403
+from hbctool.util import *  # noqa: F403
 
 
 class HASMError(ValueError):
@@ -63,17 +62,32 @@ def write_func(f, func, i, hbc, strings_cache=None):
 
 
 def _write_json_file(path, obj, indent=None):
-    with open(path, "w") as f:
-        json.dump(obj, f, indent=indent)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=indent, ensure_ascii=False)
 
 
-def dump(hbc, path, force=False):
+def ensure_path_removable(path):
+    """Refuse output paths that must never be deleted by hbctool."""
     abs_path = os.path.abspath(os.path.normpath(path))
-    if abs_path in ("/", os.path.expanduser("~"), os.getcwd()):
-        raise HASMError(f"Refusing to remove unsafe output directory: {path}")
+    protected_paths = [
+        os.path.abspath(os.sep),
+        os.path.abspath(os.path.expanduser("~")),
+        os.path.abspath(os.getcwd()),
+    ]
+
+    for p in protected_paths:
+        try:
+            if os.path.commonpath([abs_path, p]) == abs_path:
+                raise HASMError(f"Refusing to remove unsafe output directory: {path}")
+        except ValueError:
+            pass
 
     if os.path.islink(path):
         raise HASMError(f"Refusing to remove symbolic link: {path}")
+
+
+def dump(hbc, path, force=False):
+    ensure_path_removable(path)
 
     if os.path.exists(path):
         if not force:
@@ -100,10 +114,9 @@ def dump(hbc, path, force=False):
 
     _write_json_file(os.path.join(path, "string.json"), ss, indent=4)
 
-    with open(os.path.join(path, "instruction.hasm"), "w") as f:
+    with open(os.path.join(path, "instruction.hasm"), "w", encoding="utf-8") as f:
         for i in range(functionCount):
             write_func(f, hbc.getFunction(i), i, hbc, strings_cache=strings_cache)
-
 
 def read_all_func(hasm, hbc):
     functionCount = hbc.getFunctionCount()
@@ -293,6 +306,39 @@ def _build_string_id_cache(hbc):
     return string_id_cache
 
 
+def _functions_equal(current_func, parsed_func):
+    """Return True when a HASM function block matches the existing bytecode.
+
+    Loading a dumped project may only change string.json. Re-assembling every
+    unchanged function can still perturb bytecode size on bundles that contain
+    opcodes/operands the assembler cannot reproduce byte-for-byte. Skip those
+    functions so string-only edits preserve the original instruction stream.
+    """
+    if current_func[:4] != parsed_func[:4]:
+        return False
+
+    current_insts = current_func[4]
+    parsed_insts = parsed_func[4]
+    if len(current_insts) != len(parsed_insts):
+        return False
+
+    for (current_opcode, current_operands), (parsed_opcode, parsed_operands) in zip(
+        current_insts, parsed_insts
+    ):
+        if current_opcode != parsed_opcode or len(current_operands) != len(
+            parsed_operands
+        ):
+            return False
+        for current_operand, parsed_operand in zip(current_operands, parsed_operands):
+            if (
+                current_operand[0] != parsed_operand[0]
+                or current_operand[2] != parsed_operand[2]
+            ):
+                return False
+
+    return True
+
+
 def load(path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} does not exist.")
@@ -303,10 +349,10 @@ def load(path):
     if not os.path.exists(os.path.join(path, "instruction.hasm")):
         raise FileNotFoundError("instruction.hasm not found.")
 
-    with open(os.path.join(path, "metadata.json"), "r") as f:
+    with open(os.path.join(path, "metadata.json"), "r", encoding="utf-8") as f:
         hbc = hbcl.loado(json.load(f))
 
-    with open(os.path.join(path, "string.json"), "r") as f:
+    with open(os.path.join(path, "string.json"), "r", encoding="utf-8") as f:
         strings = json.load(f)
 
     string_id_cache = {}
@@ -319,24 +365,32 @@ def load(path):
         string_id_cache.setdefault(sval, sid)
 
     offset_shift = 0
+    functions_changed = False
     next_fid = 0
     pending = {}
-    with open(os.path.join(path, "instruction.hasm"), "r") as f:
+    with open(os.path.join(path, "instruction.hasm"), "r", encoding="utf-8") as f:
         for fid, func in _iter_hasm_functions(f, hbc):
             pending[fid] = func
             while next_fid in pending:
+                func = pending.pop(next_fid)
+                if _functions_equal(hbc.getFunction(next_fid), func):
+                    next_fid += 1
+                    continue
+
                 delta = hbc.setFunction(
                     next_fid,
-                    pending.pop(next_fid),
+                    func,
                     offset_shift=offset_shift,
                     string_id_cache=string_id_cache,
                 )
+                functions_changed = True
                 offset_shift += delta
                 next_fid += 1
 
     if next_fid != hbc.getFunctionCount():
         raise HASMError("Malformed HASM: missing function blocks.")
 
-    hbc._rebuild_function_offsets()
+    if functions_changed:
+        hbc._rebuild_function_offsets()
 
     return hbc

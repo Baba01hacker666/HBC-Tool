@@ -17,12 +17,7 @@ def _confirm_overwrite(path):
     if not os.path.exists(path):
         return False
 
-    abs_path = os.path.abspath(os.path.normpath(path))
-    if abs_path in ("/", os.path.expanduser("~"), os.getcwd()):
-        raise hasm.HASMError(f"Refusing to remove unsafe output directory: {path}")
-
-    if os.path.islink(path):
-        raise hasm.HASMError(f"Refusing to remove symbolic link: {path}")
+    hasm.ensure_path_removable(path)
 
     c = input(f"'{path}' exists. Do you want to remove it ? (y/n): ").lower().strip()
     if c[:1] != "y":
@@ -31,7 +26,7 @@ def _confirm_overwrite(path):
     return True
 
 
-def disasm(hbcfile, hasmpath):
+def disasm(hbcfile, hasmpath, verbose=False):
     if not os.path.isfile(hbcfile):
         raise FileNotFoundError(f"HBC file not found: {hbcfile}")
 
@@ -43,13 +38,17 @@ def disasm(hbcfile, hasmpath):
     sourceHash = bytes(header["sourceHash"]).hex()
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
+    if verbose:
+        print(
+            f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}"
+        )
 
     overwrite = _confirm_overwrite(hasmpath)
     hasm.dump(hbco, hasmpath, force=overwrite)
     print("[*] Done")
 
 
-def asm(hasmpath, hbcfile):
+def asm(hasmpath, hbcfile, verbose=False):
     print(f"[*] Assemble '{hasmpath}' to '{hbcfile}' path")
     hbco = hasm.load(hasmpath)
 
@@ -57,6 +56,10 @@ def asm(hasmpath, hbcfile):
     sourceHash = bytes(header["sourceHash"]).hex()
     version = header["version"]
     print(f"[*] Hermes Bytecode [ Source Hash: {sourceHash}, HBC Version: {version} ]")
+    if verbose:
+        print(
+            f"[DEBUG] Functions: {hbco.getFunctionCount()}, Strings: {hbco.getStringCount()}"
+        )
 
     with open(hbcfile, "wb") as f:
         hbc.dump(hbco, f)
@@ -70,6 +73,12 @@ def _build_parser():
     )
     parser.add_argument(
         "--version", action="version", version=f"{metadata.project} {metadata.version}"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug output and full tracebacks",
     )
 
     subparsers = parser.add_subparsers(dest="operation")
@@ -85,6 +94,17 @@ def _build_parser():
         nargs="?",
         default=DEFAULT_HASM_PATH,
         help="Target HASM directory path",
+    )
+    disasm_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug output and full tracebacks",
+    )
+    disasm_parser.add_argument(
+        "--fast-json",
+        action="store_true",
+        help="Use orjson for faster JSON processing",
     )
 
     asm_parser = subparsers.add_parser(
@@ -104,6 +124,17 @@ def _build_parser():
         default=DEFAULT_HBC_FILE,
         help="Target HBC file",
     )
+    asm_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Enable verbose debug output and full tracebacks",
+    )
+    asm_parser.add_argument(
+        "--fast-json",
+        action="store_true",
+        help="Use orjson for faster JSON processing",
+    )
 
     return parser
 
@@ -112,13 +143,23 @@ def main(argv=None):
     parser = _build_parser()
     args = parser.parse_args(argv)
 
+    if getattr(args, "fast_json", False):
+        from hbctool import compat_json
+
+        compat_json.enable_orjson()
+
     try:
         if args.operation in ("disasm", "d"):
-            disasm(args.hbc_file, args.hasm_path)
+            disasm(args.hbc_file, args.hasm_path, verbose=args.verbose)
         elif args.operation in ("asm", "a"):
-            asm(args.hasm_path, args.hbc_file)
-    except (FileNotFoundError, FileExistsError, hasm.HASMError, ValueError) as exc:
-        print(f"[!] {exc}", file=sys.stderr)
+            asm(args.hasm_path, args.hbc_file, verbose=args.verbose)
+    except Exception as exc:
+        if getattr(args, "verbose", False):
+            import traceback
+
+            traceback.print_exc()
+        else:
+            print(f"[!] {exc}", file=sys.stderr)
         raise SystemExit(1)
 
 

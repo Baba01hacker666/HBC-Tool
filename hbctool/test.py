@@ -1,4 +1,5 @@
 import io
+from hbctool.util import BitReader, BitWriter, read, write
 import pathlib
 import unittest
 

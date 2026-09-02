@@ -112,4 +112,4 @@ def test_hbc97_hbc98_hbc100_get_string_id_allocates_new_string():
         entry = inst.getObj()["stringTableEntries"][1]
         assert entry["isUTF16"] == 1
         val_utf16, _ = inst.getString(1)
-        assert bytes.fromhex(val_utf16).decode("utf-16-le") == utf16_str
+        assert val_utf16 == utf16_str

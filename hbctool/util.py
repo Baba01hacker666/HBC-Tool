@@ -43,36 +43,11 @@ class BitWriter:
         except ValueError:  # I/O operation on closed file.
             pass
 
-    def _writebit(self, bit, remaining=-1):
-        if remaining > -1:
-            self.accumulator |= bit << (remaining - 1)
-        else:
-            self.accumulator |= bit << (7 - self.bcount + self.remained)
-
-        self.bcount += 1
-
+    def writebits(self, v, n, remained=False):
+        self.accumulator |= (v & ((1 << n) - 1)) << self.bcount
+        self.bcount += n
         if self.bcount == 8:
             self.flush()
-
-    def _clearbits(self, remaining):
-        self.remained = remaining
-
-    def _writebyte(self, b):
-        if self.bcount:
-            raise RuntimeError("bcount is not zero.")
-        self.out.write(bytes((b,)))
-        self.write += 1
-
-    def writebits(self, v, n, remained=False):
-        i = n
-        while i > 0:
-            self._writebit(
-                (v & (1 << i - 1)) >> (i - 1), remaining=(i if remained else -1)
-            )
-            i -= 1
-
-        if remained:
-            self._clearbits(n)
 
     def writebytes(self, v, n):
         if n <= 0:
@@ -106,11 +81,11 @@ class BitWriter:
             alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0)
         ):
             raise ValueError("Support alignment as many as 8 bytes.")
-        l = self.tell()
-        if l % alignment == 0:
+        pos = self.tell()
+        if pos % alignment == 0:
             return
 
-        b = alignment - (l % alignment)
+        b = alignment - (pos % alignment)
         self.writeall([0] * (b))
 
     def writeall(self, bs):
@@ -230,12 +205,12 @@ class BitReader:
             alignment > 0 and alignment <= 8 and ((alignment & (alignment - 1)) == 0)
         ):
             raise ValueError("Support alignment as many as 8 bytes.")
-        l = self.tell()
-        if l % alignment == 0:
+        pos = self.tell()
+        if pos % alignment == 0:
             return
 
-        b = alignment - (l % alignment)
-        self.seek(l + b)
+        b = alignment - (pos % alignment)
+        self.seek(pos + b)
 
     def readall(self):
         self._ensure_cache(float("inf"))
@@ -277,11 +252,11 @@ def readbits(f, bits=8):
     s = 0
 
     if f.bcount % 8 != 0 and bits >= f.bcount:
-        l = f.bcount
-        b = f.readbits(l)
+        nbits = f.bcount
+        b = f.readbits(nbits)
         x |= (b & 0xFF) << s
-        s += l
-        bits -= l
+        s += nbits
+        bits -= nbits
 
     if bits >= 8 and not f.bcount:
         n = bits // 8
@@ -373,27 +348,23 @@ def writebits(f, v, bits=8):
         writeuint(f, v, bits)
         return
 
-    s = 0
     if f.bcount % 8 != 0 and bits >= 8 - f.bcount:
-        l = 8 - f.bcount
-        f.writebits(v & ((1 << l) - 1), l)
-        v = v >> l
-        s += l
-        bits -= l
+        nbits = 8 - f.bcount
+        f.writebits(v & ((1 << nbits) - 1), nbits)
+        v = v >> nbits
+        bits -= nbits
 
     if bits >= 8 and not f.bcount:
         n = bits // 8
         if n > 0:
             writeuint(f, v & ((1 << (n * 8)) - 1), n * 8)
             v = v >> (n * 8)
-            s += n * 8
             bits -= n * 8
 
     r = bits % 8
     if r != 0:
         f.writebits(v & ((1 << bits) - 1), r, remained=True)
         v = v >> r
-        s += r
 
 
 def write(f, v, format):
@@ -461,7 +432,10 @@ def to_uint16(buf):
             return _fastutil.to_uint16(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 2 bytes")
-    return unpack("<H", bytes(buf[:2]))[0]
+    try:
+        return buf[0] | (buf[1] << 8)
+    except IndexError:
+        raise StructError("unpack requires a buffer of 2 bytes")
 
 
 def to_uint32(buf):
@@ -470,7 +444,10 @@ def to_uint32(buf):
             return _fastutil.to_uint32(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 4 bytes")
-    return unpack("<L", bytes(buf[:4]))[0]
+    try:
+        return buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24)
+    except IndexError:
+        raise StructError("unpack requires a buffer of 4 bytes")
 
 
 def to_int8(buf):
@@ -479,7 +456,11 @@ def to_int8(buf):
             return _fastutil.to_int8(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 1 bytes")
-    return unpack("<b", bytes([buf[0]]))[0]
+    try:
+        val = buf[0]
+        return val if val < 0x80 else val - 0x100
+    except IndexError:
+        raise StructError("unpack requires a buffer of 1 bytes")
 
 
 def to_int32(buf):
@@ -488,7 +469,11 @@ def to_int32(buf):
             return _fastutil.to_int32(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 4 bytes")
-    return unpack("<i", bytes(buf[:4]))[0]
+    try:
+        val = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24)
+        return val if val < 0x80000000 else val - 0x100000000
+    except IndexError:
+        raise StructError("unpack requires a buffer of 4 bytes")
 
 
 def to_double(buf):
@@ -497,7 +482,10 @@ def to_double(buf):
             return _fastutil.to_double(buf)
         except IndexError:
             raise StructError("unpack requires a buffer of 8 bytes")
-    return unpack("<d", bytes(buf[:8]))[0]
+    try:
+        return unpack("<d", bytes(buf[:8]))[0]
+    except (IndexError, StructError):
+        raise StructError("unpack requires a buffer of 8 bytes")
 
 
 # Packing
@@ -506,37 +494,37 @@ def to_double(buf):
 def from_uint8(val):
     if _fastutil is not None:
         return _fastutil.from_uint8(val)
-    return [val]
+    return bytes([val])
 
 
 def from_uint16(val):
     if _fastutil is not None:
         return _fastutil.from_uint16(val)
-    return list(pack("<H", val))
+    return pack("<H", val)
 
 
 def from_uint32(val):
     if _fastutil is not None:
         return _fastutil.from_uint32(val)
-    return list(pack("<L", val))
+    return pack("<L", val)
 
 
 def from_int8(val):
     if _fastutil is not None:
         return _fastutil.from_int8(val)
-    return list(pack("<b", val))
+    return pack("<b", val)
 
 
 def from_int32(val):
     if _fastutil is not None:
         return _fastutil.from_int32(val)
-    return list(pack("<i", val))
+    return pack("<i", val)
 
 
 def from_double(val):
     if _fastutil is not None:
         return _fastutil.from_double(val)
-    return list(pack("<d", val))
+    return pack("<d", val)
 
 
 # Buf Function
@@ -547,3 +535,19 @@ def memcpy(dest, src, start, length):
         _fastutil.memcpy(dest, src, start, length)
         return
     dest[start : start + length] = src[:length]
+
+
+def hash_string(val):
+    h = 0
+    if isinstance(val, str):
+        for c in val:
+            h = (h + ord(c)) & 0xFFFFFFFF
+            h = (h + (h << 10)) & 0xFFFFFFFF
+            h = (h ^ (h >> 6)) & 0xFFFFFFFF
+    else:
+        for c in val:
+            h = (h + c) & 0xFFFFFFFF
+            h = (h + (h << 10)) & 0xFFFFFFFF
+            h = (h ^ (h >> 6)) & 0xFFFFFFFF
+    return h
+

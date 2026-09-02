@@ -11,7 +11,7 @@
 <p align="center">
   <strong>A Hermes bytecode disassembler and assembler for React Native bundles.</strong>
   <br>
-  Originally created by <code>baba01hacker</code> and continued by <code>Doraemon cyber team</code>.
+  Originally created by <code>baba01hacker666</code> and continued by <code>Doraemon cyber team</code>.
 </p>
 
 ## Why hbctool
@@ -71,6 +71,22 @@ python3 -c "import hbctool._fastutil, hbctool._bitcodec; print('native extension
 
 If the extensions are not present, `hbctool` still works in pure-Python mode.
 
+### Fast JSON Processing
+
+By default, `hbctool` uses the standard Python `json` module, which works seamlessly out-of-the-box on all platforms (including Android/Termux).
+
+For a **~30% speed boost**, simply install `ujson`. `hbctool` will automatically detect and use it without any further configuration:
+```bash
+pip install ujson
+```
+
+For a massive **3x speed boost** (recommended for desktop/server environments), you can install `orjson` and use the `--fast-json` flag:
+```bash
+pip install orjson
+hbctool disasm --fast-json index.android.bundle
+```
+If you pass the `--fast-json` flag but do not have `orjson` installed, the tool will safely halt and remind you to install it.
+
 ## Usage
 
 Show help:
@@ -83,8 +99,8 @@ CLI syntax:
 
 ```text
 Usage:
-    hbctool disasm <HBC_FILE> [<HASM_PATH>]
-    hbctool asm [<HASM_PATH>] [<HBC_FILE>]
+    hbctool disasm [--fast-json] <HBC_FILE> [<HASM_PATH>]
+    hbctool asm [--fast-json] [<HASM_PATH>] [<HBC_FILE>]
     hbctool --help
     hbctool --version
 ```
@@ -157,8 +173,7 @@ If the built wheel includes the compiled extension, it will be platform-tagged r
 
 ## Credits
 
-- Original work: `Kirlif bongtrop  ErbaZZ and Jusmistic `
-- Ongoing maintenance and remastering: `baba01hacker`
+- Created and maintained by `baba01hacker666`
 
 ## License
 

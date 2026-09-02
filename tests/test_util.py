@@ -9,6 +9,7 @@ from hbctool.util import (
     from_uint8,
     from_uint16,
     from_uint32,
+    hash_string,
     to_double,
     to_int8,
     to_int32,
@@ -122,28 +123,35 @@ def test_to_double_error(buf):
         to_double(buf)
 
 def test_from_uint8():
-    assert from_uint8(1) == [1]
-    assert from_uint8(255) == [255]
+    assert list(from_uint8(1)) == [1]
+    assert list(from_uint8(255)) == [255]
 
 def test_from_uint16():
-    assert from_uint16(1) == [1, 0]
-    assert from_uint16(256) == [0, 1]
-    assert from_uint16(65535) == [255, 255]
+    assert list(from_uint16(1)) == [1, 0]
+    assert list(from_uint16(256)) == [0, 1]
+    assert list(from_uint16(65535)) == [255, 255]
 
 def test_from_uint32():
-    assert from_uint32(1) == [1, 0, 0, 0]
-    assert from_uint32(4294967295) == [255, 255, 255, 255]
+    assert list(from_uint32(1)) == [1, 0, 0, 0]
+    assert list(from_uint32(4294967295)) == [255, 255, 255, 255]
 
 def test_from_int8():
-    assert from_int8(1) == [1]
-    assert from_int8(-1) == [255]
-    assert from_int8(-128) == [128]
+    assert list(from_int8(1)) == [1]
+    assert list(from_int8(-1)) == [255]
+    assert list(from_int8(-128)) == [128]
 
 def test_from_int32():
-    assert from_int32(1) == [1, 0, 0, 0]
-    assert from_int32(-1) == [255, 255, 255, 255]
-    assert from_int32(-2147483648) == [0, 0, 0, 128]
+    assert list(from_int32(1)) == [1, 0, 0, 0]
+    assert list(from_int32(-1)) == [255, 255, 255, 255]
+    assert list(from_int32(-2147483648)) == [0, 0, 0, 128]
 
 def test_from_double():
-    assert from_double(1.0) == [0, 0, 0, 0, 0, 0, 240, 63]
-    assert from_double(0.0) == [0, 0, 0, 0, 0, 0, 0, 0]
+    assert list(from_double(1.0)) == [0, 0, 0, 0, 0, 0, 240, 63]
+    assert list(from_double(0.0)) == [0, 0, 0, 0, 0, 0, 0, 0]
+
+def test_hash_string():
+    assert hash_string("Animated") == 1802960440
+    assert hash_string("isArray") == 1398931944
+    assert hash_string("Array") == 3111565995
+    assert hash_string(b"Boolean") == 3327810063
+

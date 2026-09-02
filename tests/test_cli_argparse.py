@@ -6,7 +6,7 @@ import hbctool
 def test_main_disasm_defaults(monkeypatch):
     called = {}
 
-    def fake_disasm(hbc_file, hasm_path):
+    def fake_disasm(hbc_file, hasm_path, *args, **kwargs):
         called["hbc_file"] = hbc_file
         called["hasm_path"] = hasm_path
 
@@ -19,7 +19,7 @@ def test_main_disasm_defaults(monkeypatch):
 def test_main_disasm_custom_output_path(monkeypatch):
     called = {}
 
-    def fake_disasm(hbc_file, hasm_path):
+    def fake_disasm(hbc_file, hasm_path, *args, **kwargs):
         called["hbc_file"] = hbc_file
         called["hasm_path"] = hasm_path
 
@@ -32,7 +32,7 @@ def test_main_disasm_custom_output_path(monkeypatch):
 def test_main_asm_defaults(monkeypatch):
     called = {}
 
-    def fake_asm(hasm_path, hbc_file):
+    def fake_asm(hasm_path, hbc_file, *args, **kwargs):
         called["hasm_path"] = hasm_path
         called["hbc_file"] = hbc_file
 
@@ -48,7 +48,7 @@ def test_main_asm_defaults(monkeypatch):
 def test_main_asm_custom_paths(monkeypatch):
     called = {}
 
-    def fake_asm(hasm_path, hbc_file):
+    def fake_asm(hasm_path, hbc_file, *args, **kwargs):
         called["hasm_path"] = hasm_path
         called["hbc_file"] = hbc_file
 
@@ -62,9 +62,9 @@ def test_main_aliases(monkeypatch):
     called = {"disasm": False, "asm": False}
 
     monkeypatch.setattr(
-        hbctool, "disasm", lambda *_: called.__setitem__("disasm", True)
+        hbctool, "disasm", lambda *args, **kwargs: called.__setitem__("disasm", True)
     )
-    monkeypatch.setattr(hbctool, "asm", lambda *_: called.__setitem__("asm", True))
+    monkeypatch.setattr(hbctool, "asm", lambda *args, **kwargs: called.__setitem__("asm", True))
 
     hbctool.main(["d", "bundle.hbc"])
     hbctool.main(["a"])
@@ -102,7 +102,7 @@ def test_main_supports_version(capsys):
 )
 def test_main_domain_errors_exit(monkeypatch, capsys, error_type):
     monkeypatch.setattr(
-        hbctool, "disasm", lambda *_: (_ for _ in ()).throw(error_type("boom"))
+        hbctool, "disasm", lambda *args, **kwargs: (_ for _ in ()).throw(error_type("boom"))
     )
 
     with pytest.raises(SystemExit) as exc:

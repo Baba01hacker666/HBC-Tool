@@ -62,7 +62,7 @@ class HBC97:
 
         raw_len = length * 2 if isUTF16 else length
         s = bytes(stringStorage[offset : offset + raw_len])
-        return s.hex() if isUTF16 else s.decode("utf-8", errors="surrogateescape"), (1 if isUTF16 else 0, offset, length)
+        return s.decode("utf-16-le") if isUTF16 else s.decode("utf-8", errors="surrogateescape"), (1 if isUTF16 else 0, offset, length)
 
     def getStringId(self, string_value, string_id_cache=None):
         from .parser import INVALID_LENGTH
@@ -133,7 +133,6 @@ class HBC97:
 
         stringStorage = self.getObj()["stringStorage"]
         from hbctool.util import memcpy
-
         memcpy(stringStorage, s, offset, len(s))
 
         if string_id_cache is not None:
@@ -189,13 +188,20 @@ class HBC97:
             offset = stringTableOverflowEntry["offset"]
             length = stringTableOverflowEntry["length"]
 
-        is_utf16 = not val.isascii() if isinstance(val, str) else False
+        is_utf16 = isUTF16 or (not val.isascii() if isinstance(val, str) else False)
         if is_utf16:
             s = val.encode("utf-16-le") if isinstance(val, str) else val
             l = len(s) // 2
         else:
             s = val.encode("utf-8") if isinstance(val, str) else val
             l = len(s)
+
+        if is_utf16 == isUTF16 and l == length:
+            current_length = length * 2 if isUTF16 else length
+            if bytes(stringStorage[offset : offset + current_length]) == s:
+                return
+
+        stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
 
         if l > length:
             offset = self._allocate_string_slot(len(s))
@@ -217,6 +223,9 @@ class HBC97:
                 length *= 2
 
         memcpy(stringStorage, s, offset, len(s))
+
+        if sid < self.getObj()["header"]["identifierCount"]:
+            self.getObj()["identifierHashes"][sid] = hash_string(val)
 
     def getFunction(self, fid, disasm=True):
         assert fid >= 0 and fid < self.getFunctionCount(), "Invalid function ID"
