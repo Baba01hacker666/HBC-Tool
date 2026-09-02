@@ -3,10 +3,11 @@ A command-line interface for disassembling and assembling
 the Hermes Bytecode.
 """
 
-from hbctool import metadata, hbc, hasm
 import argparse
 import os
 import sys
+
+from hbctool import hasm, hbc, metadata
 
 DEFAULT_HASM_PATH = "hasm"
 DEFAULT_HBC_FILE = "index.android.bundle"

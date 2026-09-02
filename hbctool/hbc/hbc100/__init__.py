@@ -1,7 +1,9 @@
-from hbctool.util import *
-from .parser import parse, export, INVALID_LENGTH
-from .translator import disassemble, assemble
 from struct import pack, unpack
+
+from hbctool.util import *
+
+from .parser import INVALID_LENGTH, export, parse
+from .translator import assemble, disassemble
 
 NullTag = 0
 TrueTag = 1 << 4
@@ -64,32 +66,70 @@ class HBC100:
         s = bytes(stringStorage[offset : offset + raw_len])
         return s.hex() if isUTF16 else s.decode("utf-8", errors="surrogateescape"), (1 if isUTF16 else 0, offset, length)
 
-    def getStringId(self, s, string_id_cache=None):
-        if string_id_cache is not None:
-            if s in string_id_cache:
-                return string_id_cache[s]
-        else:
-            if s in self._string_id_cache:
-                return self._string_id_cache[s]
+    def getStringId(self, string_value, string_id_cache=None):
+        from .parser import INVALID_LENGTH
 
-            next_search_id = self._last_string_id_searched + 1
-            if next_search_id < self.getStringCount():
-                val, _ = self.getString(next_search_id)
-                self._string_id_cache[val] = next_search_id
-                self._last_string_id_searched = next_search_id
-                if val == s:
-                    return next_search_id
+        count = self.getStringCount()
 
-        for i in range(self.getStringCount()):
-            val, _ = self.getString(i)
+        sid = self._string_id_cache.get(string_value)
+        if sid is not None:
             if string_id_cache is not None:
-                string_id_cache[val] = i
-            else:
-                self._string_id_cache[val] = i
-            if val == s:
-                return i
+                string_id_cache[string_value] = sid
+            return sid
 
-        raise ValueError(f"String ID not found: {s}")
+        if string_id_cache is not None:
+            sid = string_id_cache.get(string_value)
+            if sid is not None:
+                return sid
+
+        for i in range(self._last_string_id_searched + 1, count):
+            try:
+                s, _ = self.getString(i)
+                self._string_id_cache.setdefault(s, i)
+                self._last_string_id_searched = i
+                if s == string_value:
+                    if string_id_cache is not None:
+                        string_id_cache[string_value] = i
+                    return i
+            except UnicodeDecodeError:
+                self._last_string_id_searched = i
+                continue
+
+        isUTF16 = 0
+        s = string_value.encode("utf-8")
+        l = len(s)
+
+        offset = self._allocate_string_slot(len(s))
+
+        stringTableEntry = {
+            "isUTF16": isUTF16,
+        }
+
+        stringTableOverflowEntries = self.getObj()["stringTableOverflowEntries"]
+        if l >= INVALID_LENGTH:
+            stringTableEntry["length"] = INVALID_LENGTH
+            stringTableEntry["offset"] = len(stringTableOverflowEntries)
+            stringTableOverflowEntries.append({"offset": offset, "length": l})
+            self.getObj()["header"]["overflowStringCount"] = len(
+                stringTableOverflowEntries
+            )
+        else:
+            stringTableEntry["length"] = l
+            stringTableEntry["offset"] = offset
+
+        self.getObj()["stringTableEntries"].append(stringTableEntry)
+        self.getObj()["header"]["stringCount"] += 1
+
+        stringStorage = self.getObj()["stringStorage"]
+        from hbctool.util import memcpy
+
+        memcpy(stringStorage, s, offset, len(s))
+
+        if string_id_cache is not None:
+            string_id_cache[string_value] = count
+        self._string_id_cache[string_value] = count
+
+        return count
 
     def _shift_function_offsets(self, delta):
         if delta == 0:

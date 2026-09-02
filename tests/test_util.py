@@ -1,11 +1,22 @@
-import pytest
 from struct import error as StructError
+
+import pytest
+
 from hbctool.util import (
-    to_uint8, to_uint16, to_uint32,
-    to_int8, to_int32, to_double,
-    from_uint8, from_uint16, from_uint32,
-    from_int8, from_int32, from_double
+    from_double,
+    from_int8,
+    from_int32,
+    from_uint8,
+    from_uint16,
+    from_uint32,
+    to_double,
+    to_int8,
+    to_int32,
+    to_uint8,
+    to_uint16,
+    to_uint32,
 )
+
 
 @pytest.mark.parametrize(
     "buf, expected",

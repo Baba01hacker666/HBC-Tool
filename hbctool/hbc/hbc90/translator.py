@@ -1,7 +1,8 @@
-import pathlib
-import json
 import importlib.util
+import json
 import os
+import pathlib
+
 from hbctool.util import *
 
 basepath = pathlib.Path(__file__).parent.absolute()

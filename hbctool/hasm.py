@@ -1,9 +1,11 @@
-from .util import *
-import hbctool.hbc as hbcl
 import json
 import os
-import shutil
 import re
+import shutil
+
+import hbctool.hbc as hbcl
+
+from .util import *
 
 
 class HASMError(ValueError):
@@ -11,25 +13,25 @@ class HASMError(ValueError):
 
 
 FUNCTION_HEADER_RE = re.compile(
-    r"^Function(?:<.*?>)?([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):$",
+    r"^Function(?:<(.*?)>)?([0-9]+)\([0-9]+ params, [0-9]+ registers,\s?[0-9]+ symbols\):$",
     re.MULTILINE,
 )
 FUNCTION_BLOCK_RE = re.compile(
-    r"Function(?:<.*?>)?([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
+    r"Function(?:<(.*?)>)?([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):\n(.+?)\nEndFunction",
     re.DOTALL,
 )
 FUNCTION_LINE_RE = re.compile(
-    r"^Function<(.*?)>([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):$"
+    r"^Function(?:<(.*?)>)?([0-9]+)\(([0-9]+) params, ([0-9]+) registers,\s?([0-9]+) symbols\):$"
 )
 
 
-def write_func(f, func, i, hbc):
+def write_func(f, func, i, hbc, strings_cache=None):
     functionName, paramCount, registerCount, symbolCount, insts, _ = func
-    f.write(
+    lines = [
         f"Function<{functionName}>{i}({paramCount} params, {registerCount} registers, {symbolCount} symbols):\n"
-    )
+    ]
+    str_count = hbc.getStringCount()
     for opcode, operands in insts:
-        f.write(f"\t{opcode.ljust(20,' ')}\t")
         o = []
         ss = []
         for ii, v in enumerate(operands):
@@ -37,23 +39,27 @@ def write_func(f, func, i, hbc):
             o.append(f"{t}:{val}")
 
             if is_str:
-                if 0 <= val < hbc.getStringCount():
+                if 0 <= val < str_count:
                     try:
-                        s, _ = hbc.getString(val)
+                        s = (
+                            strings_cache[val]
+                            if strings_cache is not None
+                            else hbc.getString(val)[0]
+                        )
                         ss.append((ii, val, s))
-                    except Exception:
+                    except (UnicodeDecodeError, IndexError, ValueError):
                         ss.append((ii, val, "<invalid string id>"))
                 else:
                     ss.append((ii, val, "<invalid string id>"))
 
-        f.write(f"{', '.join(o)}\n")
+        lines.append(f"\t{opcode.ljust(20,' ')}\t{', '.join(o)}\n")
         if len(ss) > 0:
             for ii, val, s in ss:
-                f.write(f"\t; Oper[{ii}]: String({val}) {repr(s)}\n")
+                lines.append(f"\t; Oper[{ii}]: String({val}) {s!r}\n")
+            lines.append("\n")
 
-            f.write("\n")
-
-    f.write("EndFunction\n\n")
+    lines.append("EndFunction\n\n")
+    f.writelines(lines)
 
 
 def _write_json_file(path, obj, indent=None):
@@ -85,16 +91,18 @@ def dump(hbc, path, force=False):
     stringCount = hbc.getStringCount()
     functionCount = hbc.getFunctionCount()
 
+    strings_cache = []
     ss = []
     for i in range(stringCount):
         val, header = hbc.getString(i)
         ss.append({"id": i, "isUTF16": header[0] == 1, "value": val})
+        strings_cache.append(val)
 
     _write_json_file(os.path.join(path, "string.json"), ss, indent=4)
 
     with open(os.path.join(path, "instruction.hasm"), "w") as f:
         for i in range(functionCount):
-            write_func(f, hbc.getFunction(i), i, hbc)
+            write_func(f, hbc.getFunction(i), i, hbc, strings_cache=strings_cache)
 
 
 def read_all_func(hasm, hbc):
@@ -102,7 +110,7 @@ def read_all_func(hasm, hbc):
     rs = [""] * functionCount
 
     for m in FUNCTION_HEADER_RE.finditer(hasm):
-        fid = int(m.group(1))
+        fid = int(m.group(2))
 
         if fid < 0 or fid >= functionCount:
             raise HASMError(
@@ -128,11 +136,11 @@ def read_func(func_asms, i):
     if not m:
         raise HASMError(f"Malformed function block for function {i}.")
 
-    functionName = m.group(1)
-    paramCount = int(m.group(2))
-    registerCount = int(m.group(3))
-    symbolCount = int(m.group(4))
-    insts_asm = m.group(5)
+    functionName = m.group(1) or ""
+    paramCount = int(m.group(3))
+    registerCount = int(m.group(4))
+    symbolCount = int(m.group(5))
+    insts_asm = m.group(6)
 
     inst_lines = insts_asm.split("\n")
 
@@ -180,14 +188,9 @@ def _strip_inline_comment(line):
 
 
 def _parse_instruction_line(line, fid):
-    if "	" in line:
-        parts = [p for p in line.split("	") if p]
-        opcode = parts[0].strip()
-        operands_text = parts[1].strip() if len(parts) > 1 else ""
-    else:
-        sp = line.split(None, 1)
-        opcode = sp[0]
-        operands_text = sp[1] if len(sp) > 1 else ""
+    sp = line.split(None, 1)
+    opcode = sp[0]
+    operands_text = sp[1] if len(sp) > 1 else ""
 
     operands = []
     if operands_text:
@@ -235,7 +238,7 @@ def _iter_hasm_functions(lines, hbc):
 
             current = {
                 "fid": fid,
-                "function_name": m.group(1),
+                "function_name": m.group(1) or "",
                 "param_count": int(m.group(3)),
                 "register_count": int(m.group(4)),
                 "symbol_count": int(m.group(5)),
@@ -306,14 +309,14 @@ def load(path):
     with open(os.path.join(path, "string.json"), "r") as f:
         strings = json.load(f)
 
+    string_id_cache = {}
     for string in strings:
-        current_value, _ = hbc.getString(string["id"])
-        if current_value != string["value"]:
-            hbc.setString(string["id"], string["value"])
-
-    # Large bundles can reference the same function-name strings tens of thousands
-    # of times. Build a reusable lookup once so rebuilding functions stays linear.
-    string_id_cache = _build_string_id_cache(hbc)
+        sid = string["id"]
+        sval = string["value"]
+        current_value, _ = hbc.getString(sid)
+        if current_value != sval:
+            hbc.setString(sid, sval)
+        string_id_cache.setdefault(sval, sid)
 
     offset_shift = 0
     next_fid = 0

@@ -1,7 +1,9 @@
-from hbctool.util import memcpy
-from .parser import parse, export, INVALID_LENGTH
-from .translator import disassemble, assemble
 from struct import unpack
+
+from hbctool.util import memcpy
+
+from .parser import INVALID_LENGTH, export, parse
+from .translator import assemble, disassemble
 
 NullTag = 0
 TrueTag = 1 << 4

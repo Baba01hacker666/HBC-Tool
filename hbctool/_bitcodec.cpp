@@ -54,7 +54,7 @@ static PyObject* bc_le_to_uint(PyObject*, PyObject* args, PyObject* kwargs) {
     if (signed_flag && n > 0) {
         uint64_t sign_bit = (uint64_t)1 << (n * 8 - 1);
         if (u & sign_bit) {
-            int64_t s = (int64_t)(u | (~0ULL << (n * 8)));
+            int64_t s = (n == 8) ? (int64_t)u : (int64_t)(u | (~0ULL << (n * 8)));
             return PyLong_FromLongLong(s);
         }
     }

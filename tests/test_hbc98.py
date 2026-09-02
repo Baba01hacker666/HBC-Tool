@@ -1,7 +1,6 @@
-import os
-import pytest
 import hbctool
 from hbctool.hbc import HBC, HBC98
+
 
 def test_hbc98_version_registration():
     assert 98 in hbctool.hbc._HBC_MODULES

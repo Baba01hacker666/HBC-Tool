@@ -1,4 +1,5 @@
 import io
+
 from hbctool.util import BitReader
 
 

@@ -1,8 +1,7 @@
-from struct import pack, unpack
-from struct import error as StructError
 import importlib.util
 import os
-
+from struct import error as StructError
+from struct import pack, unpack
 
 _FASTUTIL_ENABLED = os.environ.get("HBCTOOL_FASTUTIL", "0") == "1"
 _FASTUTIL_SPEC = (
@@ -24,7 +23,7 @@ else:
 # File Object
 
 
-class BitWriter(object):
+class BitWriter:
     def __init__(self, f):
         self.accumulator = 0
         self.bcount = 0
@@ -115,11 +114,13 @@ class BitWriter(object):
         self.writeall([0] * (b))
 
     def writeall(self, bs):
+        if self.bcount:
+            self.flush()
         self.out.write(bytes(bs))
         self.write += len(bs)
 
 
-class BitReader(object):
+class BitReader:
     def __init__(self, f):
         self.input = f
         if hasattr(f, "read"):
@@ -132,7 +133,7 @@ class BitReader(object):
             else:
                 self.cache = f.read()
         else:
-            self.cache = bytes()
+            self.cache = b""
         self.accumulator = 0
         self.bcount = 0
         self.read = 0
@@ -151,13 +152,12 @@ class BitReader(object):
                     self.cache += more
             return
 
-        if self.read + n > len(self.cache):
-            if hasattr(self.input, "read"):
-                more = self.input.read(self.read + n - len(self.cache))
-                if not more:
-                    more = self.input.read()
-                if more:
-                    self.cache += more
+        if self.read + n > len(self.cache) and hasattr(self.input, "read"):
+            more = self.input.read(self.read + n - len(self.cache))
+            if not more:
+                more = self.input.read()
+            if more:
+                self.cache += more
 
     def read_raw(self, n):
         if self.bcount:
@@ -333,7 +333,7 @@ def read(f, format):
         elif type == "bit":
             r = [readbits(f, bits=bits) for _ in range(n)]
         else:
-            raise Exception(f"Data type {type} is not supported.")
+            raise ValueError(f"Data type {type} is not supported.")
 
     if n == 1:
         return r[0]
@@ -404,6 +404,31 @@ def write(f, v, format):
     if not isinstance(v, list):
         v = [v]
 
+    if (
+        t in ("uint", "int")
+        and bits % 8 == 0
+        and not getattr(f, "bcount", 0)
+        and n > 1
+    ):
+        bytes_per_item = bits // 8
+        if bytes_per_item == 1 and t == "uint":
+            data = bytes(v)
+            f.out.write(data)
+            f.write += len(data)
+            return
+        elif bytes_per_item in (1, 2, 4, 8):
+            signed = t == "int"
+            fmt_char = {
+                1: "b" if signed else "B",
+                2: "h" if signed else "H",
+                4: "i" if signed else "I",
+                8: "q" if signed else "Q",
+            }[bytes_per_item]
+            data = pack(f"<{n}{fmt_char}", *v)
+            f.out.write(data)
+            f.write += len(data)
+            return
+
     if t == "uint":
         for i in range(n):
             writeuint(f, v[i], bits=bits)
@@ -414,7 +439,7 @@ def write(f, v, format):
         for i in range(n):
             writebits(f, v[i], bits=bits)
     else:
-        raise Exception(f"Data type {t} is not supported.")
+        raise ValueError(f"Data type {t} is not supported.")
 
 
 # Unpacking

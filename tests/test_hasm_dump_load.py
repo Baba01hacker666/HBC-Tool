@@ -1,7 +1,8 @@
 from pathlib import Path
-import pytest
-from hbctool import hbc, hasm
 
+import pytest
+
+from hbctool import hasm, hbc
 
 FIXTURE_BUNDLE = Path("Testfiles/index.android.bundle")
 

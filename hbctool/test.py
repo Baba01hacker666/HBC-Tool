@@ -1,11 +1,12 @@
-import unittest
 import io
-from hbctool.util import *
-from hbctool.hbc.hbc76.test import *
-from hbctool.hbc.hbc74.test import *
-from hbctool.hbc.hbc62.test import *
-from hbctool.hbc.hbc59.test import *
 import pathlib
+import unittest
+
+from hbctool.hbc.hbc59.test import *
+from hbctool.hbc.hbc62.test import *
+from hbctool.hbc.hbc74.test import *
+from hbctool.hbc.hbc76.test import *
+from hbctool.util import *
 
 basepath = pathlib.Path(__file__).parent.absolute()
 

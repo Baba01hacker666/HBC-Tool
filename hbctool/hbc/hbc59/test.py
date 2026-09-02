@@ -1,9 +1,12 @@
-from hbctool import hbc as hbcl, hasm
-from .translator import assemble, disassemble
-import unittest
-import re
-import pathlib
 import json
+import pathlib
+import re
+import unittest
+
+from hbctool import hasm
+from hbctool import hbc as hbcl
+
+from .translator import assemble, disassemble
 
 basepath = pathlib.Path(__file__).parent.absolute()
 repo_root = basepath.parents[2]
@@ -24,7 +27,7 @@ def _fixture(*parts, required=True):
 
 class TestHBC59(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(TestHBC59, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.hbc = hbcl.load(open(_fixture("index.android.bundle"), "rb"))
         # self.objdump = open(f"{basepath}/example/objdump.out", "r").read()
         pretty_fixture = _fixture("pretty.out", required=False)
