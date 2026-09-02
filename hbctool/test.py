@@ -2,11 +2,11 @@ import io
 import pathlib
 import unittest
 
-from hbctool.hbc.hbc59.test import *
-from hbctool.hbc.hbc62.test import *
-from hbctool.hbc.hbc74.test import *
-from hbctool.hbc.hbc76.test import *
-from hbctool.util import *
+from hbctool.hbc.hbc59.test import *  # noqa: F403
+from hbctool.hbc.hbc62.test import *  # noqa: F403
+from hbctool.hbc.hbc74.test import *  # noqa: F403
+from hbctool.hbc.hbc76.test import *  # noqa: F403
+from hbctool.util import *  # noqa: F403
 
 basepath = pathlib.Path(__file__).parent.absolute()
 

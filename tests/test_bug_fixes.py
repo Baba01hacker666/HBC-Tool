@@ -26,6 +26,22 @@ def test_fast_batch_write_buffers():
     assert buf.getvalue() == bytes([1, 2, 3, 4, 255])
 
 
+def test_fast_batch_write_exact_count_and_masking():
+    # Only serialize n items even if input has more
+    buf = io.BytesIO()
+    writer = BitWriter(buf)
+    write(writer, [1, 2, 3, 4, 5], ["uint", 8, 2])
+    writer.flush()
+    assert buf.getvalue() == bytes([1, 2])
+
+    # Masking negative / overflowing values
+    buf2 = io.BytesIO()
+    writer2 = BitWriter(buf2)
+    write(writer2, [-1, 256], ["uint", 8, 2])
+    writer2.flush()
+    assert buf2.getvalue() == bytes([255, 0])
+
+
 def test_hasm_read_func_preserves_function_name():
     content = """Function<my_custom_function>0(1 params, 2 registers, 0 symbols):
 \tRet                  Reg8:0
@@ -73,7 +89,9 @@ def test_hbc97_hbc98_hbc100_get_string_id_allocates_new_string():
                 "stringCount": 0,
                 "overflowStringCount": 0,
                 "stringStorageSize": 0,
+                "stringKindCount": 0,
             },
+            "stringKinds": [],
             "stringTableEntries": [],
             "stringTableOverflowEntries": [],
             "stringStorage": [],
@@ -84,3 +102,14 @@ def test_hbc97_hbc98_hbc100_get_string_id_allocates_new_string():
         assert sid == 0
         val, _ = inst.getString(0)
         assert val == "new_dynamic_string"
+        assert inst.getObj()["header"]["stringKindCount"] == 1
+        assert len(inst.getObj()["stringKinds"]) == 1
+
+        # Test UTF-16 string allocation
+        utf16_str = "🚀 hermes"
+        sid_utf16 = inst.getStringId(utf16_str)
+        assert sid_utf16 == 1
+        entry = inst.getObj()["stringTableEntries"][1]
+        assert entry["isUTF16"] == 1
+        val_utf16, _ = inst.getString(1)
+        assert bytes.fromhex(val_utf16).decode("utf-16-le") == utf16_str

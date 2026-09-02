@@ -409,22 +409,25 @@ def write(f, v, format):
         and bits % 8 == 0
         and not getattr(f, "bcount", 0)
         and n > 1
+        and len(v) >= n
     ):
+        items = v[:n]
         bytes_per_item = bits // 8
         if bytes_per_item == 1 and t == "uint":
-            data = bytes(v)
+            data = bytes(x & 0xFF for x in items)
             f.out.write(data)
             f.write += len(data)
             return
         elif bytes_per_item in (1, 2, 4, 8):
-            signed = t == "int"
+            mask = (1 << bits) - 1
+            masked_items = [x & mask for x in items]
             fmt_char = {
-                1: "b" if signed else "B",
-                2: "h" if signed else "H",
-                4: "i" if signed else "I",
-                8: "q" if signed else "Q",
+                1: "B",
+                2: "H",
+                4: "I",
+                8: "Q",
             }[bytes_per_item]
-            data = pack(f"<{n}{fmt_char}", *v)
+            data = pack(f"<{n}{fmt_char}", *masked_items)
             f.out.write(data)
             f.write += len(data)
             return

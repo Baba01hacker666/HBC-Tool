@@ -5,7 +5,7 @@ import shutil
 
 import hbctool.hbc as hbcl
 
-from .util import *
+from .util import *  # noqa: F403
 
 
 class HASMError(ValueError):

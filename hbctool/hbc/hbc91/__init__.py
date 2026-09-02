@@ -1,6 +1,6 @@
-from struct import pack, unpack
+from struct import unpack
 
-from hbctool.util import *
+from hbctool.util import *  # noqa: F403
 
 from .parser import INVALID_LENGTH, export, parse
 from .translator import assemble, disassemble
