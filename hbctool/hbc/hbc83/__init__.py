@@ -280,26 +280,42 @@ class HBC83:
             if bytes(stringStorage[offset : offset + current_length]) == s:
                 return
 
+                old_byte_len = length * 2 if isUTF16 else length
+        new_byte_len = len(s)
+
         stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
 
-        if l > length:
-            offset = self._allocate_string_slot(len(s))
+        if new_byte_len > old_byte_len:
+            offset = self._allocate_string_slot(new_byte_len)
             if stringTableEntry["length"] >= INVALID_LENGTH:
                 stringTableOverflowEntries[stringTableEntry["offset"]]["offset"] = (
                     offset
                 )
                 stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
-            else:
+            elif l >= INVALID_LENGTH:
                 stringTableEntry["length"] = INVALID_LENGTH
                 stringTableEntry["offset"] = len(stringTableOverflowEntries)
                 stringTableOverflowEntries.append({"offset": offset, "length": l})
-                self.getObj()["header"]["overflowStringCount"] = len(
-                    stringTableOverflowEntries
-                )
+                if "overflowStringCount" in self.getObj().get("header", {}):
+                    self.getObj()["header"]["overflowStringCount"] = len(
+                        stringTableOverflowEntries
+                    )
+            else:
+                stringTableEntry["length"] = l
+                stringTableEntry["offset"] = offset
         else:
-            stringTableEntry["isUTF16"] = 1 if is_utf16 else 0
-            if isUTF16:
-                length *= 2
+            if stringTableEntry["length"] >= INVALID_LENGTH:
+                stringTableOverflowEntries[stringTableEntry["offset"]]["length"] = l
+            elif l >= INVALID_LENGTH:
+                stringTableEntry["length"] = INVALID_LENGTH
+                stringTableEntry["offset"] = len(stringTableOverflowEntries)
+                stringTableOverflowEntries.append({"offset": offset, "length": l})
+                if "overflowStringCount" in self.getObj().get("header", {}):
+                    self.getObj()["header"]["overflowStringCount"] = len(
+                        stringTableOverflowEntries
+                    )
+            else:
+                stringTableEntry["length"] = l
 
         memcpy(stringStorage, s, offset, len(s))
 

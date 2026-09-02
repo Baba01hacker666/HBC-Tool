@@ -25,6 +25,7 @@ FUNCTION_LINE_RE = re.compile(
 
 
 def write_func(f, func, i, hbc, strings_cache=None):
+    """Serialize a parsed HBC function tuple into HASM textual format."""
     functionName, paramCount, registerCount, symbolCount, insts, _ = func
     lines = [
         f"Function<{functionName}>{i}({paramCount} params, {registerCount} registers, {symbolCount} symbols):\n"
@@ -62,6 +63,7 @@ def write_func(f, func, i, hbc, strings_cache=None):
 
 
 def _write_json_file(path, obj, indent=None):
+    """Write an object to a JSON file with UTF-8 encoding."""
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=indent, ensure_ascii=False)
 
@@ -87,6 +89,7 @@ def ensure_path_removable(path):
 
 
 def dump(hbc, path, force=False):
+    """Dump HBC bytecode metadata, string table, and disassembled HASM to a folder."""
     ensure_path_removable(path)
 
     if os.path.exists(path):
@@ -119,6 +122,7 @@ def dump(hbc, path, force=False):
             write_func(f, hbc.getFunction(i), i, hbc, strings_cache=strings_cache)
 
 def read_all_func(hasm, hbc):
+    """Split HASM source text into individual function blocks."""
     functionCount = hbc.getFunctionCount()
     rs = [""] * functionCount
 
@@ -143,6 +147,7 @@ def read_all_func(hasm, hbc):
 
 
 def read_func(func_asms, i):
+    """Parse a single HASM function block into its structure and instructions."""
     func_asm = func_asms[i]
 
     m = FUNCTION_BLOCK_RE.search(func_asm)
@@ -201,6 +206,7 @@ def _strip_inline_comment(line):
 
 
 def _parse_instruction_line(line, fid):
+    """Parse a single line of HASM instruction into opcode and operand tuples."""
     sp = line.split(None, 1)
     opcode = sp[0]
     operands_text = sp[1] if len(sp) > 1 else ""
@@ -226,6 +232,7 @@ def _parse_instruction_line(line, fid):
 
 
 def _iter_hasm_functions(lines, hbc):
+    """Yield parsed function blocks sequentially from an iterable of HASM lines."""
     function_count = hbc.getFunctionCount()
     seen = [False] * function_count
     current = None
@@ -289,6 +296,7 @@ def _iter_hasm_functions(lines, hbc):
 
 
 def parse_hasm_functions(hasm_content, hbc):
+    """Parse complete HASM content into a list of function structures."""
     function_count = hbc.getFunctionCount()
     results = [None] * function_count
 
@@ -299,6 +307,7 @@ def parse_hasm_functions(hasm_content, hbc):
 
 
 def _build_string_id_cache(hbc):
+    """Build a mapping from string value to string ID for fast lookup."""
     string_id_cache = {}
     for sid in range(hbc.getStringCount()):
         value, _ = hbc.getString(sid)
@@ -340,6 +349,7 @@ def _functions_equal(current_func, parsed_func):
 
 
 def load(path):
+    """Load dumped metadata, string table, and HASM assembly back into an HBC object."""
     if not os.path.exists(path):
         raise FileNotFoundError(f"{path} does not exist.")
     if not os.path.exists(os.path.join(path, "metadata.json")):
